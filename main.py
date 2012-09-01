@@ -6,13 +6,13 @@ from condt import Condt
 import getpass, os
 
 CONF_NAME = 'condt.conf' 
+PREFIX = "{0}@ConDict>>>"
 
 
 def main():
-    global CONF_NAME
+    global CONF_NAME, PREFIX
     # user-name query
     config = get_config_data(CONF_NAME)
-    print(config['database'])
     if not os.path.exists(config['database']):
         print("Not fount SQLite database")
         return 1
@@ -24,9 +24,14 @@ def main():
         print('Validation error, bye...')
         return 0
     print(account)
-
-
+    prefix = PREFIX.format(account.name)
+    while (True):
+        command = input(prefix)
+        print('ok', command)
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print('Press Ctrl+C, Bye')

@@ -34,15 +34,13 @@ class Condt():
         if ch_user_id:
             ch_user_id = ch_user_id[0]
             # check pass
-            return self.handling_action(cur, ch_user_id)
+            user_id = self.handling_action(cur, ch_user_id)
         else:
-            print('add')
+            user_id = self.handling_add(cur)
         cur.close()
-        return None
+        return user_id
 
     def hash_pass(self, password):
-        return password
-    def hash_pass1(self, password):
         result = bytes(password.strip().lower(), 'utf-8')
         return hashlib.sha1(result).hexdigest()
 
@@ -55,7 +53,7 @@ class Condt():
 
     def check_password(self, cur, user_id):
         try:
-            cur.execute("SELECT id FROM user WHERE id=(?) AND password=(?)", (user_id, self.password))
+            cur.execute("SELECT id FROM user WHERE id=(?) AND password=(?)", (user_id, self.hash_pass(self.password)))
         except sqlite3.DatabaseError as er:
             return None
         return cur.fetchone()
@@ -78,4 +76,31 @@ class Condt():
         return None
 
     def handling_add(self, cur):
-        pass
+        while(True):
+            want_add = input('Are you want add new user? [Y/n]')
+            if want_add in ('', 'y', 'Y'):
+                name = input("You login [{0}]:".format(self.name))
+                if name == '':
+                    name = self.name
+                fullname = input("You full name:")
+                password = input("Password:") if DEBUG else getpass.getpass()
+                transaction_ok = False
+                try:
+                    cur.execute("INSERT INTO user (name, password, full) VALUES (?,?,?)", (name, self.hash_pass(password), fullname))
+                except sqlite3.DatabaseError as er:
+                    print(er)
+                    print('Incorrect information, change data')
+                    continue
+                else:
+                    self.connect.commit()
+                if cur.rowcount == -1:
+                    print('Incorrect information, change data')
+                    continue
+                self.name = name
+                self.password = self.hash_pass(password)
+                return cur.lastrowid
+            elif want_add in ('n', 'N'):
+                break
+            else:
+                print('select an option...')
+        return None
