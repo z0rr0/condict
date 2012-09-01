@@ -17,10 +17,7 @@ def main():
         print("Not fount SQLite database")
         return 1
     # get name
-    if config['defuser']:
-        user = config['defuser']
-    else:
-        user = input("User name:")
+    user = config['defuser'] if config['defuser'] else input("User name:")
     # get password
     print('"{0}" please enter your password:'.format(user))
     password = input("Password: ") if DEBUG else getpass.getpass()
