@@ -6,7 +6,7 @@ from condt import Condt
 import getpass, os
 
 CONF_NAME = 'condt.conf' 
-DEBUG = True
+
 
 def main():
     global CONF_NAME
@@ -18,12 +18,11 @@ def main():
         return 1
     # get name
     user = config['defuser'] if config['defuser'] else input("User name:")
-    # get password
-    print('"{0}" please enter your password:'.format(user))
-    password = input("Password: ") if DEBUG else getpass.getpass()
-
     # create object
-    account = Condt(user, password, config['database'])
+    account = Condt(user, config['database'])
+    if not account:
+        print('Validation error, bye...')
+        return 0
     print(account)
 
 

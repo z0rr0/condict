@@ -1,20 +1,18 @@
 #!/usr/bin/env python3
 #-*- coding: utf-8 -*-
 
-import sqlite3, hashlib
+import sqlite3, hashlib, getpass
+DEBUG = True
 
 class Condt():
     """Condt - base class for ConDict"""
 
 
-    def __init__(self, name, password, dbfile):
+    def __init__(self, name, dbfile):
+        self.__pcounter = 3
         self.name = name
-        self.password = password
         self.connect = sqlite3.connect(dbfile)
-        self.user_id = None
-        if self.get_user() != 0:
-            self.handling_action()
-        print(self.user_id)
+        self.user_id = self.get_user()
 
     def __repr__(self):
         return "<ConDict object for {0}>".format(self.name)
@@ -22,23 +20,25 @@ class Condt():
     def __str__(self):
         return "<ConDict object for {0}>".format(self.name)
 
+    def __bool__(self):
+        valid = True if self.user_id else False
+        return valid
+
     def __del__(self):
         self.connect.close()
 
     def get_user(self):
         sqlstr="SELECT id FROM user WHERE name=(?) AND password=(?)"
         cur = self.connect.cursor()
-        try:
-            cur.execute(sqlstr, (self.name, self.hash_pass(self.password)))
-            result = cur.fetchone()
-            if result:
-                self.user_id = result[0]
-            else:
-                return 1
-        except (sqlite3.DatabaseError, TypeError)  as er:
-            print('error')
+        ch_user_id = self.check_name(cur)
+        if ch_user_id:
+            ch_user_id = ch_user_id[0]
+            # check pass
+            return self.handling_action(cur, ch_user_id)
+        else:
+            print('add')
         cur.close()
-        return 0
+        return None
 
     def hash_pass(self, password):
         return password
@@ -46,15 +46,36 @@ class Condt():
         result = bytes(password.strip().lower(), 'utf-8')
         return hashlib.sha1(result).hexdigest()
 
-    def handling_action(self):
-        while(True):
-            action = input('Sorry, not found user, there are actions "Add new user"/"Press password again" [a/P]:')
-            if action in ('', 'P', 'p'):
-                print('press')
-                break
-            elif action in ('a', 'A'):
-                print('add', self.name)
-                break
+    def check_name(self, cur):
+        try:
+            cur.execute("SELECT id FROM user WHERE name=(?)", (self.name,))
+        except sqlite3.DatabaseError as er:
+            return None
+        return cur.fetchone()
+
+    def check_password(self, cur, user_id):
+        try:
+            cur.execute("SELECT id FROM user WHERE id=(?) AND password=(?)", (user_id, self.password))
+        except sqlite3.DatabaseError as er:
+            return None
+        return cur.fetchone()
+
+    def handling_action(self, cur, ch_user_id):
+        print('"{0}" please enter your password:'.format(self.name))
+        while(self.__pcounter > 0):
+            self.password = input("Password:") if DEBUG else getpass.getpass()
+            user_id = self.check_password(cur, ch_user_id)
+            if user_id:
+                return user_id[0]
             else:
-                print('select an option...')
-        print('ok')
+                action = input('Invalid password, there are actions "Exit"/"Press password again" [e/P]:')
+                if action in ('', 'P', 'p'):
+                    self.__pcounter -= 1
+                elif action in ('e', 'E'):
+                    break
+                else:
+                    print('select an option...')
+        return None
+
+    def handling_add(self, cur):
+        pass
