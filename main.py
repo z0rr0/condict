@@ -29,7 +29,6 @@ def main():
         command = input(prefix)
         print('ok', command)
 
-
 if __name__ == "__main__":
     try:
         main()
