@@ -37,7 +37,7 @@ def main():
     while (True):
         command = input(prefix)
         if command not in COMMANDS.keys():
-            print('sorry, command not found')
+            print('Sorry, unknown command: "{0}"\nuse ".help" for more information'.format(command))
             continue
         COMMANDS[command][1](COMMANDS)
         print('ok', command)
