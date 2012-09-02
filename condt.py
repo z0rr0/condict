@@ -2,7 +2,7 @@
 #-*- coding: utf-8 -*-
 
 import sqlite3, hashlib, getpass
-DEBUG = False
+DEBUG = True
 
 class BaseConDict(object):
     """Base Console Dictionary class"""
@@ -59,8 +59,8 @@ class Condt(BaseConDict):
 
     def handling_action(self, cur, ch_user_id):
         print('"{0}" please enter your password:'.format(self.name))
+        self.password = input("Password:") if DEBUG else getpass.getpass()
         while(self.__pcounter > 0):
-            self.password = input("Password:") if DEBUG else getpass.getpass()
             user_id = self.check_password(cur, ch_user_id)
             if user_id:
                 return user_id[0]
@@ -68,6 +68,7 @@ class Condt(BaseConDict):
                 action = input('Invalid password, there are actions "Exit"/"Press password again" [e/P]:')
                 if action in ('', 'P', 'p'):
                     self.__pcounter -= 1
+                    self.password = input("Password:") if DEBUG else getpass.getpass()
                 elif action in ('e', 'E'):
                     break
                 else:
@@ -81,13 +82,12 @@ class Condt(BaseConDict):
                 name = input("You login [{0}]:".format(self.name))
                 if name == '':
                     name = self.name
-                fullname = input("You full name:")
+                fullname = input("You full name (optional):")
                 password = input("Password:") if DEBUG else getpass.getpass()
                 transaction_ok = False
                 try:
                     cur.execute("INSERT INTO user (name, password, full) VALUES (?,?,?)", (name, self.hash_pass(password), fullname))
                 except sqlite3.DatabaseError as er:
-                    print(er)
                     print('Incorrect information, change data')
                     continue
                 else:
