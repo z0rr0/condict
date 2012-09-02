@@ -2,30 +2,29 @@
 #-*- coding: utf-8 -*-
 
 import sqlite3, hashlib, getpass
-DEBUG = True
+DEBUG = False
 
-class Condt():
-    """Condt - base class for ConDict"""
-
-
+class BaseConDict(object):
+    """Base Console Dictionary class"""
     def __init__(self, name, dbfile):
-        self.__pcounter = 3
-        self.name = name
         self.connect = sqlite3.connect(dbfile)
-        self.user_id = self.get_user()
-
+        self.name = name
     def __repr__(self):
         return "<ConDict object for {0}>".format(self.name)
-
     def __str__(self):
         return "<ConDict object for {0}>".format(self.name)
-
     def __bool__(self):
         valid = True if self.user_id else False
         return valid
-
     def __del__(self):
         self.connect.close()
+
+class Condt(BaseConDict):
+    """Condt - class for ConDict"""
+    def __init__(self, name, dbfile):
+        super().__init__(name, dbfile)       
+        self.__pcounter = 3
+        self.user_id = self.get_user()
 
     def get_user(self):
         sqlstr="SELECT id FROM user WHERE name=(?) AND password=(?)"

@@ -7,13 +7,16 @@ import getpass, os
 
 CONF_NAME = 'condt.conf' 
 PREFIX = "{0}@ConDict>>>"
-
+WELCOM = """****************************************************
+*** Good day.                                    ***
+*** For help, use the command ".help", nice work.***
+****************************************************"""
 
 def main():
     global CONF_NAME, PREFIX
     # user-name query
     config = get_config_data(CONF_NAME)
-    if not os.path.exists(config['database']):
+    if not config['database'] or not os.path.exists(config['database']):
         print("Not fount SQLite database")
         return 1
     # get name
@@ -23,7 +26,7 @@ def main():
     if not account:
         print('Validation error, bye...')
         return 0
-    print(account)
+    print(WELCOM)
     prefix = PREFIX.format(account.name)
     while (True):
         command = input(prefix)
