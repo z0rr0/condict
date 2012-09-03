@@ -13,7 +13,3 @@ def get_config_data(filename):
     except (KeyError, IndexError, TypeError) as er:
         pass
     return result
-
-def help_command(commands):
-    for key, item in commands.items():
-        print("{0:.<30}{1}".format(key, item[0]))

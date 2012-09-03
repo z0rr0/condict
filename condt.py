@@ -4,6 +4,8 @@
 import sqlite3, hashlib, getpass
 DEBUG = True
 
+class IncorrectDbData(Exception): pass
+
 class BaseConDict(object):
     """Base Console Dictionary class"""
     def __init__(self, name, dbfile):
@@ -22,9 +24,12 @@ class BaseConDict(object):
 class Condt(BaseConDict):
     """Condt - class for ConDict"""
     COMMANDS = {'.help': {'desc': 'list commands', 'command': None}, 
-        # '.chname': {'desc': 'change current user name', 'command': None}, 
+        '.chname': {'desc': 'change current user name', 'command': None},
         # '.chpassword': {'desc': 'change current password', 'command': None},
         # '.list': {'desc': 'list users words', 'command': None},
+        # '.add': {'desc': 'add new words', 'command': None},
+        # '.edit': {'desc': 'edit words', 'command': None},
+        # '.del': {'desc': 'delete words', 'command': None},
         '.exit': {'desc': 'quit from program', 'command': None},
         }
     def __init__(self, name, dbfile):
@@ -49,6 +54,7 @@ class Condt(BaseConDict):
     def init_command(self):
         self.COMMANDS['.help']['command'] = self.command_help
         self.COMMANDS['.exit']['command'] = self.command_exit
+        self.COMMANDS['.chname']['command'] = self.command_chname
 
     def hash_pass(self, password):
         result = bytes(password.strip(), 'utf-8')
@@ -129,8 +135,29 @@ class Condt(BaseConDict):
     def command_exit(self):
         return 0
 
-    def chname(self):
-        pass
+    def command_chname(self):
+        cur = self.connect.cursor()
+        while(True):
+            name = input("You login:")
+            fullname = input("You full name (optional):")
+            try:
+                if name == '':
+                    raise IncorrectDbData()
+                cur.execute("UPDATE user SET name=(?), full=(?) WHERE id=(?)", (name, fullname, self.user_id))
+            except (sqlite3.DatabaseError, IncorrectDbData) as er:
+                print('Incorrect information, change data')
+                e = input('Exit from name update [N/y]')
+                if e in ('y', 'Y'):
+                    break
+                continue
+            else:
+                self.connect.commit()
+                self.name = name
+                print("You name updated successfully")
+                break
+        cur.close()
+        return 'chname'
+
     def chpassword(self):
         pass
 

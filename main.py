@@ -27,8 +27,8 @@ def main():
         print('Validation error, bye...')
         return 0
     print(WELCOM)
-    prefix = PREFIX.format(account.name)
     while (True):
+        prefix = PREFIX.format(account.name)
         command = input(prefix)
         get_command = account.handling_command(command)
         if get_command is None:
