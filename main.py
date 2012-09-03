@@ -11,15 +11,9 @@ WELCOM = """****************************************************
 *** Good day.                                    ***
 *** For help, use the command ".help", nice work.***
 ****************************************************"""
-COMMANDS = {'.help': ('list commands', help_command), 
-    '.chname': ('change current user name',), 
-    '.chpassword': ('change current password',),
-    '.list': ('list users words',),
-    '.exit': ('quit from program',),
-    }
 
 def main():
-    global CONF_NAME, PREFIX, COMMANDS
+    global CONF_NAME, PREFIX
     # user-name query
     config = get_config_data(CONF_NAME)
     if not config['database'] or not os.path.exists(config['database']):
@@ -36,11 +30,15 @@ def main():
     prefix = PREFIX.format(account.name)
     while (True):
         command = input(prefix)
-        if command not in COMMANDS.keys():
+        get_command = account.handling_command(command)
+        if get_command is None:
             print('Sorry, unknown command: "{0}"\nuse ".help" for more information'.format(command))
             continue
-        COMMANDS[command][1](COMMANDS)
-        print('ok', command)
+        if not get_command:
+            print("Bye {0}!".format(account.name))
+            return 0
+        # COMMANDS[command][1](COMMANDS)
+        # print('ok', command)
 
 if __name__ == "__main__":
     try:

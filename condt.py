@@ -21,9 +21,16 @@ class BaseConDict(object):
 
 class Condt(BaseConDict):
     """Condt - class for ConDict"""
+    COMMANDS = {'.help': {'desc': 'list commands', 'command': None}, 
+        '.chname': {'desc': 'change current user name', 'command': None}, 
+        '.chpassword': {'desc': 'change current password', 'command': None},
+        '.list': {'desc': 'list users words', 'command': None},
+        '.exit': {'desc': 'quit from program', 'command': None},
+        }
     def __init__(self, name, dbfile):
         super().__init__(name, dbfile)       
         self.__pcounter = 3
+        self.init_command()
         self.user_id = self.get_user()
 
     def get_user(self):
@@ -38,6 +45,10 @@ class Condt(BaseConDict):
             user_id = self.handling_add(cur)
         cur.close()
         return user_id
+
+    def init_command(self):
+        self.COMMANDS['.help']['command'] = self.command_help
+        self.COMMANDS['.exit']['command'] = self.command_exit
 
     def hash_pass(self, password):
         result = bytes(password.strip(), 'utf-8')
@@ -103,3 +114,23 @@ class Condt(BaseConDict):
             else:
                 print('select an option...')
         return None
+
+    def handling_command(self, command):
+        if command not in self.COMMANDS.keys():
+            return None
+        result = self.COMMANDS[command]['command']()
+        return result
+
+    def command_help(self):
+        for key, item in self.COMMANDS.items():
+            print("{0:.<30}{1}".format(key, item['desc']))
+        return '.help'
+
+    def command_exit(self):
+        return 0
+
+    def chname(self):
+        pass
+    def chpassword(self):
+        pass
+
