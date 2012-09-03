@@ -40,7 +40,7 @@ class Condt(BaseConDict):
         return user_id
 
     def hash_pass(self, password):
-        result = bytes(password.strip().lower(), 'utf-8')
+        result = bytes(password.strip(), 'utf-8')
         return hashlib.sha1(result).hexdigest()
 
     def check_name(self, cur):
