@@ -22,9 +22,9 @@ class BaseConDict(object):
 class Condt(BaseConDict):
     """Condt - class for ConDict"""
     COMMANDS = {'.help': {'desc': 'list commands', 'command': None}, 
-        '.chname': {'desc': 'change current user name', 'command': None}, 
-        '.chpassword': {'desc': 'change current password', 'command': None},
-        '.list': {'desc': 'list users words', 'command': None},
+        # '.chname': {'desc': 'change current user name', 'command': None}, 
+        # '.chpassword': {'desc': 'change current password', 'command': None},
+        # '.list': {'desc': 'list users words', 'command': None},
         '.exit': {'desc': 'quit from program', 'command': None},
         }
     def __init__(self, name, dbfile):
