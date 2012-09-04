@@ -37,8 +37,6 @@ def main():
         if not get_command:
             print("By {0}!".format(account.name))
             return 0
-        # COMMANDS[command][1](COMMANDS)
-        # print('ok', command)
 
 if __name__ == "__main__":
     try:

@@ -29,7 +29,7 @@ class Condt(BaseConDict):
     COMMANDS = {'.help': {'desc': 'list commands', 'command': None}, 
         '.chname': {'desc': 'change current user name', 'command': None},
         '.chpassword': {'desc': 'change current password', 'command': None},
-        # '.list': {'desc': 'list users words', 'command': None},
+        '.list': {'desc': 'list users words', 'command': None},
         # '.add': {'desc': 'add new words', 'command': None},
         # '.edit': {'desc': 'edit words', 'command': None},
         # '.del': {'desc': 'delete words', 'command': None},
@@ -59,6 +59,7 @@ class Condt(BaseConDict):
         self.COMMANDS['.exit']['command'] = self.command_exit
         self.COMMANDS['.chname']['command'] = self.command_chname
         self.COMMANDS['.chpassword']['command'] = self.command_chpassword
+        self.COMMANDS['.list']['command'] = self.command_list
 
     def hash_pass(self, password):
         result = bytes(password.strip() + SALT, 'utf-8')
@@ -189,3 +190,9 @@ class Condt(BaseConDict):
                 break
         cur.close()
         return 'chpassword'
+
+    def command_list(self, pattern=None):
+        cur = self.connect.cursor()
+        print('search by pattern')
+        cur.close()
+        return 'list'
