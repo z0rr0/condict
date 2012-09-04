@@ -24,7 +24,7 @@ def main():
     # create object
     account = Condt(user, config['database'])
     if not account:
-        print('Validation error, bye...')
+        print('Validation error, by...')
         return 0
     print(WELCOM)
     while (True):
@@ -35,7 +35,7 @@ def main():
             print('Sorry, unknown command: "{0}"\nuse ".help" for more information'.format(command))
             continue
         if not get_command:
-            print("Bye {0}!".format(account.name))
+            print("By {0}!".format(account.name))
             return 0
         # COMMANDS[command][1](COMMANDS)
         # print('ok', command)

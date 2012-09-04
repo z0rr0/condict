@@ -2,6 +2,9 @@
 #-*- coding: utf-8 -*-
 
 import sqlite3, hashlib, getpass
+
+# please, change this stirg for your application
+SALT = 'r8Uts$jLs74Lgh49_h75&w@dFsS4sgpm3Kqq['
 DEBUG = True
 
 class IncorrectDbData(Exception): pass
@@ -25,7 +28,7 @@ class Condt(BaseConDict):
     """Condt - class for ConDict"""
     COMMANDS = {'.help': {'desc': 'list commands', 'command': None}, 
         '.chname': {'desc': 'change current user name', 'command': None},
-        # '.chpassword': {'desc': 'change current password', 'command': None},
+        '.chpassword': {'desc': 'change current password', 'command': None},
         # '.list': {'desc': 'list users words', 'command': None},
         # '.add': {'desc': 'add new words', 'command': None},
         # '.edit': {'desc': 'edit words', 'command': None},
@@ -55,9 +58,10 @@ class Condt(BaseConDict):
         self.COMMANDS['.help']['command'] = self.command_help
         self.COMMANDS['.exit']['command'] = self.command_exit
         self.COMMANDS['.chname']['command'] = self.command_chname
+        self.COMMANDS['.chpassword']['command'] = self.command_chpassword
 
     def hash_pass(self, password):
-        result = bytes(password.strip(), 'utf-8')
+        result = bytes(password.strip() + SALT, 'utf-8')
         return hashlib.sha1(result).hexdigest()
 
     def check_name(self, cur):
@@ -67,9 +71,9 @@ class Condt(BaseConDict):
             return None
         return cur.fetchone()
 
-    def check_password(self, cur, user_id):
+    def check_password(self, cur, user_id, password):
         try:
-            cur.execute("SELECT id FROM user WHERE id=(?) AND password=(?)", (user_id, self.hash_pass(self.password)))
+            cur.execute("SELECT id FROM user WHERE id=(?) AND password=(?)", (user_id, self.hash_pass(password)))
         except sqlite3.DatabaseError as er:
             return None
         return cur.fetchone()
@@ -78,7 +82,7 @@ class Condt(BaseConDict):
         print('"{0}" please enter your password:'.format(self.name))
         self.password = input("Password:") if DEBUG else getpass.getpass()
         while(self.__pcounter > 0):
-            user_id = self.check_password(cur, ch_user_id)
+            user_id = self.check_password(cur, ch_user_id, self.password)
             if user_id:
                 return user_id[0]
             else:
@@ -146,7 +150,7 @@ class Condt(BaseConDict):
                 cur.execute("UPDATE user SET name=(?), full=(?) WHERE id=(?)", (name, fullname, self.user_id))
             except (sqlite3.DatabaseError, IncorrectDbData) as er:
                 print('Incorrect information, change data')
-                e = input('Exit from name update [N/y]')
+                e = input('Do you wand exit from name update [N/y]?')
                 if e in ('y', 'Y'):
                     break
                 continue
@@ -158,6 +162,30 @@ class Condt(BaseConDict):
         cur.close()
         return 'chname'
 
-    def chpassword(self):
-        pass
-
+    def command_chpassword(self):
+        cur = self.connect.cursor()
+        while(True):
+            password_old = input("Old password:") if DEBUG else getpass.getpass()
+            try:
+                if self.check_password(cur, self.user_id, password_old):
+                    password1 = input("New password:") if DEBUG else getpass.getpass()
+                    password2 = input("New password again:") if DEBUG else getpass.getpass()
+                    if password1 != password2:
+                        raise IncorrectDbData()
+                    else:
+                        cur.execute("UPDATE user SET password=(?) WHERE id=(?)", (self.hash_pass1(password1), self.user_id))
+                else:
+                    raise IncorrectDbData()
+            except (sqlite3.DatabaseError, IncorrectDbData) as er:
+                print('Incorrect information, change data')
+                e = input('Do you wand exit from password update [N/y]?')
+                if e in ('y', 'Y'):
+                    break
+                continue
+            else:
+                self.connect.commit()
+                self.password = password1
+                print("You password updated successfully")
+                break
+        cur.close()
+        return 'chpassword'
