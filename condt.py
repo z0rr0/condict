@@ -31,6 +31,8 @@ class Condt(BaseConDict):
         '.chname': {'desc': 'change current user name', 'command': None},
         '.chpassword': {'desc': 'change current password', 'command': None},
         '.list': {'desc': 'list users words', 'command': None},
+        '.en': {'desc': 'dictionary mode English to Russin', 'command': None},
+        '.ru': {'desc': 'dictionary mode Russin to English', 'command': None},
         # '.add': {'desc': 'add new words', 'command': None},
         # '.edit': {'desc': 'edit words', 'command': None},
         # '.del': {'desc': 'delete words', 'command': None},
@@ -61,6 +63,8 @@ class Condt(BaseConDict):
         self.COMMANDS['.chname']['command'] = self.command_chname
         self.COMMANDS['.chpassword']['command'] = self.command_chpassword
         self.COMMANDS['.list']['command'] = self.command_list
+        self.COMMANDS['.en']['command'] = self.command_en
+        self.COMMANDS['.ru']['command'] = self.command_ru
 
     def hash_pass(self, password):
         result = bytes(password.strip() + SALT, 'utf-8')
@@ -129,21 +133,21 @@ class Condt(BaseConDict):
         return None
 
     def handling_command(self, command):
-        command = get_command(command)[0]
+        command, arg = get_command(command)
         if command not in self.COMMANDS.keys():
             return None
-        result = self.COMMANDS[command]['command']()
+        result = self.COMMANDS[command]['command'](arg)
         return result
 
-    def command_help(self):
+    def command_help(self, arg=None):
         for key, item in self.COMMANDS.items():
             print("{0:.<30}{1}".format(key, item['desc']))
         return '.help'
 
-    def command_exit(self):
+    def command_exit(self, arg=None):
         return 0
 
-    def command_chname(self):
+    def command_chname(self, arg=None):
         cur = self.connect.cursor()
         while(True):
             name = input("You login:")
@@ -166,7 +170,7 @@ class Condt(BaseConDict):
         cur.close()
         return 'chname'
 
-    def command_chpassword(self):
+    def command_chpassword(self, arg=None):
         cur = self.connect.cursor()
         while(True):
             password_old = input("Old password:") if DEBUG else getpass.getpass()
@@ -193,6 +197,21 @@ class Condt(BaseConDict):
                 break
         cur.close()
         return 'chpassword'
+
+    def command_en(self, text):
+        self.command_enru(text, 'en')
+        return 'en'
+    def command_ru(self, text):
+        self.command_enru(text, 'ru')
+        return 'ru'
+    def command_enru(self, text, tr_type):
+        result = get_translate(text, tr_type)
+        if not result or result['code'] != 200:
+            return "Error, not foud translate"
+        print(result['text'])
+        return 0
+
+
 
     def command_list(self, pattern=None):
         cur = self.connect.cursor()
