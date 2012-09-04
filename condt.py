@@ -2,6 +2,7 @@
 #-*- coding: utf-8 -*-
 
 import sqlite3, hashlib, getpass
+from aside import *
 
 # please, change this stirg for your application
 SALT = 'r8Uts$jLs74Lgh49_h75&w@dFsS4sgpm3Kqq['
@@ -128,6 +129,7 @@ class Condt(BaseConDict):
         return None
 
     def handling_command(self, command):
+        command = get_command(command)[0]
         if command not in self.COMMANDS.keys():
             return None
         result = self.COMMANDS[command]['command']()
