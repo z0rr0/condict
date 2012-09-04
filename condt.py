@@ -173,7 +173,7 @@ class Condt(BaseConDict):
                     if password1 != password2:
                         raise IncorrectDbData()
                     else:
-                        cur.execute("UPDATE user SET password=(?) WHERE id=(?)", (self.hash_pass1(password1), self.user_id))
+                        cur.execute("UPDATE user SET password=(?) WHERE id=(?)", (self.hash_pass(password1), self.user_id))
                 else:
                     raise IncorrectDbData()
             except (sqlite3.DatabaseError, IncorrectDbData) as er:
