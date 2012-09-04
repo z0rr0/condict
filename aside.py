@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 #-*- coding: utf-8 -*-
 
-import re, configparser
+import re, configparser, json
+from urllib import request
 
 def get_config_data(filename):
     result = {'database': None, 'defuser': None}
@@ -18,3 +19,21 @@ def get_command(raw_str):
 	result = re.sub(r"\s+", " ", raw_str.strip())
 	# return [command, str_params]
 	return result.split(" ", 1)
+
+def get_translate(for_translate, trans_type):
+    result = False
+    prepate_url = request.pathname2url(for_translate)
+    trans_types = {'en': 'en-ru', 'ru': 'ru-en'}
+    prepate_url = "http://translate.yandex.net/api/v1/tr.json/translate?lang=" + trans_types[trans_type] + "&text=" + prepate_url
+    try:
+        conn = request.urlopen(prepate_url)
+    except Exception:
+        return result
+    if conn.status == 200:
+        try:
+            from_url = conn.read().decode('utf-8')
+            result = json.loads(from_url)
+        except Exception as e:
+            print(e)
+    conn.close()
+    return result
