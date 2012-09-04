@@ -63,6 +63,7 @@ class Condt(BaseConDict):
 
     def hash_pass(self, password):
         result = bytes(password.strip() + SALT, 'utf-8')
+        result = bytes(hashlib.md5(result).hexdigest(), 'utf-8')
         return hashlib.sha1(result).hexdigest()
 
     def check_name(self, cur):
