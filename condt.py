@@ -213,7 +213,23 @@ class Condt(BaseConDict):
 
     def command_list(self, pattern=None):
         cur = self.connect.cursor()
-        sql_list = "SELECT term.en, translate.rus FROM translate LEFT JOIN term ON (translate.term=term.token) WHERE translate.user_id=(?) ORDER BY translate.created DESC"
-        print('search by pattern')
+        sql_list = "SELECT `translate`.`id`, `term`.`en`, `translate`.`rus`, `progress`.`all`, `progress`.`error` FROM `translate` LEFT JOIN `term` ON (`translate`.`term`=`term`.`token`) LEFT JOIN `progress` ON (`progress`.`translate_id`=`translate`.`id`) WHERE `translate`.`user_id`=(?) "
+        params = (self.user_id,)
+        result_text, result_param = "Get {0} rows", [0]
+
+        if pattern:
+            sql_list += " AND `term`.`en` LIKE (?)"
+            params = (self.user_id, pattern + '%')
+            result_text = "Get {0} rows for pattern '{1}%'"
+            result_param.append(pattern)
+        sql_list += " ORDER BY `translate`.`created` DESC"
+        cur.execute(sql_list, params)
+        i = 1
+        for row in cur.fetchall():
+            print("{0}. ID={1} all {2}, error {3}".format(i, row[0], row[3], row[4]))
+            print("\t(en) {0}\n\t(ru) {1}".format(row[1], row[2]))
+            i +=1
+        result_param[0] = i - 1
+        print(result_text.format(*result_param))
         cur.close()
         return 'list'
