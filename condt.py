@@ -216,7 +216,6 @@ class Condt(BaseConDict):
         sql_list = "SELECT `translate`.`id`, `term`.`en`, `translate`.`rus`, `progress`.`all`, `progress`.`error` FROM `translate` LEFT JOIN `term` ON (`translate`.`term`=`term`.`token`) LEFT JOIN `progress` ON (`progress`.`translate_id`=`translate`.`id`) WHERE `translate`.`user_id`=(?) "
         params = (self.user_id,)
         result_text, result_param = "Get {0} rows", [0]
-
         if pattern:
             sql_list += " AND `term`.`en` LIKE (?)"
             params = (self.user_id, pattern + '%')
@@ -233,3 +232,10 @@ class Condt(BaseConDict):
         print(result_text.format(*result_param))
         cur.close()
         return 'list'
+    
+    def command_add(self, en_words=None):
+        pass
+    def command_edit(self, translate_id):
+        pass
+    def command_delete(self, id_or_pattern):
+        pass
