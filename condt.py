@@ -211,10 +211,9 @@ class Condt(BaseConDict):
         print(result['text'])
         return 0
 
-
-
     def command_list(self, pattern=None):
         cur = self.connect.cursor()
+        sql_list = "SELECT term.en, translate.rus FROM translate LEFT JOIN term ON (translate.term=term.token) WHERE translate.user_id=(?) ORDER BY translate.created DESC"
         print('search by pattern')
         cur.close()
         return 'list'
