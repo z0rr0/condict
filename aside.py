@@ -32,7 +32,9 @@ def get_translate(for_translate, trans_type):
     prepate_url = YANDEX_TRANSLATE + trans_types[trans_type] + "&text=" + prepate_url
     try:
         conn = request.urlopen(prepate_url)
-    except Exception:
+    except Exception as e:
+        print("Not connection\nError:")
+        print(e)
         return result
     if conn.status == 200:
         try:
