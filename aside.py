@@ -4,6 +4,8 @@
 import re, configparser, json
 from urllib import request
 
+YANDEX_TRANSLATE = "http://translate.yandex.net/api/v1/tr.json/translate?lang="
+
 def get_config_data(filename):
     result = {'database': None, 'defuser': None}
     config = configparser.ConfigParser()
@@ -27,7 +29,7 @@ def get_translate(for_translate, trans_type):
     result = False
     prepate_url = request.pathname2url(for_translate)
     trans_types = {'en': 'en-ru', 'ru': 'ru-en'}
-    prepate_url = "http://translate.yandex.net/api/v1/tr.json/translate?lang=" + trans_types[trans_type] + "&text=" + prepate_url
+    prepate_url = YANDEX_TRANSLATE + trans_types[trans_type] + "&text=" + prepate_url
     try:
         conn = request.urlopen(prepate_url)
     except Exception:
@@ -40,27 +42,3 @@ def get_translate(for_translate, trans_type):
             print(e)
     conn.close()
     return result
-
-# Alternative
-# import http.client
-# def get_translate(for_translate, trans_type):
-#     prepate_url = request.pathname2url(for_translate)
-#     trans_types = {'en': 'en-ru', 'ru': 'ru-en'}
-#     conn = http.client.HTTPConnection('translate.yandex.net')
-#     result = False
-#     try:
-#         conn.request("GET", "/api/v1/tr.json/translate?lang=" + trans_types[trans_type] + "&text=" + prepate_url)
-#         gr = conn.getresponse()
-#     except Exception as e:
-#         print(e)
-#         conn.close()
-#         return result
-#     if gr.status == 200:
-#         print(conn)
-#         from_url = gr.read().decode('utf-8')
-#         try:
-#             result = json.loads(from_url)
-#         except ValueError as e:
-#             print(e)
-#     conn.close()
-#     return result
