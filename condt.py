@@ -33,7 +33,7 @@ class Condt(BaseConDict):
         '.list': {'desc': 'list users words', 'command': None},
         '.en': {'desc': 'dictionary mode English to Russian', 'command': None},
         '.ru': {'desc': 'dictionary mode Russian to English', 'command': None},
-        # '.add': {'desc': 'add new words', 'command': None},
+        '.add': {'desc': 'add new words', 'command': None},
         # '.edit': {'desc': 'edit words', 'command': None},
         # '.del': {'desc': 'delete words', 'command': None},
         '.exit': {'desc': 'quit from program', 'command': None},
@@ -65,6 +65,7 @@ class Condt(BaseConDict):
         self.COMMANDS['.list']['command'] = self.command_list
         self.COMMANDS['.en']['command'] = self.command_en
         self.COMMANDS['.ru']['command'] = self.command_ru
+        self.COMMANDS['.add']['command'] = self.command_add
 
     def hash_pass(self, password):
         result = bytes(password.strip() + SALT, 'utf-8')
@@ -199,17 +200,16 @@ class Condt(BaseConDict):
         return 'chpassword'
 
     def command_en(self, text):
-        self.command_enru(text, 'en')
+        print(self.command_enru(text, 'en'))
         return 'en'
     def command_ru(self, text):
-        self.command_enru(text, 'ru')
+        print(self.command_enru(text, 'ru'))
         return 'ru'
     def command_enru(self, text, tr_type):
         result = get_translate(text, tr_type)
         if not result or result['code'] != 200:
             return "Error, not foud translate"
-        print(result['text'])
-        return 0
+        return result['text']
 
     def command_list(self, pattern=None):
         cur = self.connect.cursor()
@@ -222,19 +222,69 @@ class Condt(BaseConDict):
             result_text = "Get {0} rows for pattern '{1}%'"
             result_param.append(pattern)
         sql_list += " ORDER BY `translate`.`created` DESC"
-        cur.execute(sql_list, params)
-        i = 1
-        for row in cur.fetchall():
-            print("{0}. ID={1} all {2}, error {3}".format(i, row[0], row[3], row[4]))
-            print("\t(en) {0}\n\t(ru) {1}".format(row[1], row[2]))
-            i +=1
-        result_param[0] = i - 1
-        print(result_text.format(*result_param))
+        try:
+            cur.execute(sql_list, params)
+            i = 1
+            for row in cur.fetchall():
+                print("{0}. ID={1} all {2}, error {3}".format(i, row[0], row[3], row[4]))
+                print("\t(en) {0}\n\t(ru) {1}".format(row[1], row[2]))
+                i +=1
+            result_param[0] = i - 1
+            print(result_text.format(*result_param))
+        except (sqlite3.DatabaseError, IncorrectDbData) as er:
+            print('Sorry, error')
+            return 'list'
         cur.close()
         return 'list'
     
     def command_add(self, en_words=None):
-        pass
+        cur = self.connect.cursor()
+        print('Please enter your patterns:')
+        while True:
+            try:
+                en = input('En [' + en_words + ']:') if en_words else input('En: ')
+                if not en:
+                    if not en_words:
+                        raise IncorrectDbData()
+                    else:
+                        en = en_words
+                try:
+                    ru_words = self.command_enru(en, 'en')[0]
+                except Exception as e:
+                    if DEBUG: print(e)
+                    ru_words = None
+                ru = input('Ru [' + ru_words + ']:') if ru_words else input('Ru: ')
+                if not ru:
+                    if not ru_words:
+                        raise IncorrectDbData()
+                    else:
+                        ru = ru_words
+                ru = ru.lower().strip()
+                en = en.lower().strip()
+                token = hashlib.md5(bytes(en, 'utf-8')).hexdigest()
+                # search token
+                sql_list = "SELECT `token` FROM `term` WHERE `token`=(?)"
+                cur.execute(sql_list, (token,))
+                if cur.fetchone():
+                    print('Words add already.')
+                    break
+                sql_list1 = "INSERT INTO `term` (`token`, `en`) VALUES ((?), (?))"
+                cur.execute(sql_list1, (token, en))
+                sql_list2 = "INSERT INTO `translate` (`term`, `user_id`, `rus`) VALUES (?, ?, ?)"
+                cur.execute(sql_list2, (token, self.user_id, ru))
+            except (sqlite3.DatabaseError, IncorrectDbData) as er:
+                if DEBUG: print(er)
+                print('Incorrect information, change data')
+                ent = input('Do you wand enter new words [Y/n]?')
+                if ent in ('n', 'N'):
+                    break
+                continue
+            else:
+                self.connect.commit()
+                break
+        cur.close()
+        return 'add'
+
     def command_edit(self, translate_id):
         pass
     def command_delete(self, id_or_pattern):
