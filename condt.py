@@ -273,7 +273,7 @@ class Condt(BaseConDict):
                 sql_list = "SELECT `token` FROM `term` WHERE `token`=(?)"
                 cur.execute(sql_list, (token,))
                 if cur.fetchone():
-                    print('Words add already.')
+                    print('Words already contained in database.')
                     break
                 sql_list1 = "INSERT INTO `term` (`token`, `en`) VALUES ((?), (?))"
                 cur.execute(sql_list1, (token, en))
@@ -295,8 +295,10 @@ class Condt(BaseConDict):
         return 'add'
 
     def command_edit(self, translate_id):
+        """Edit translate words form DB, search by ID"""
         pass
     def command_delete(self, id_or_pattern):
+        """Delete translate words form DB, search by ID or pattern (several rows)"""
         pass
 
     def command_connect(self, arg=None):
