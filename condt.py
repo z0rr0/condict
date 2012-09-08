@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 #-*- coding: utf-8 -*-
 
-import sqlite3, hashlib, getpass
+import sqlite3, hashlib, getpass, datetime, csv
 from aside import *
 
 # please, change this stirg for your application
 SALT = 'r8Uts$jLs74Lgh49_h75&w@dFsS4sgpm3Kqq['
+EXPORT_NAME = 'condict_export_'
 DEBUG = True
 
 class IncorrectDbData(Exception): pass
+class DublicationDbData(Exception): pass
 
 class BaseConDict(object):
     """Base Console Dictionary class"""
@@ -36,6 +38,7 @@ class Condt(BaseConDict):
         '.ru': {'desc': 'dictionary mode Russian to English', 'command': None},
         '.add': {'desc': 'add new words', 'command': None},
         '.connect': {'desc': 'test connection', 'command': None},
+        '.export': {'desc': 'export user dictionary to CSV file', 'command': None},
         # '.edit': {'desc': 'edit words', 'command': None},
         # '.del': {'desc': 'delete words', 'command': None},
         '.exit': {'desc': 'quit from program', 'command': None},
@@ -70,6 +73,7 @@ class Condt(BaseConDict):
         self.COMMANDS['.ru']['command'] = self.command_ru
         self.COMMANDS['.add']['command'] = self.command_add
         self.COMMANDS['.connect']['command'] = self.command_connect
+        self.COMMANDS['.export']['command'] = self.command_export
 
     def hash_pass(self, password):
         result = bytes(password.strip() + SALT, 'utf-8')
@@ -268,19 +272,10 @@ class Condt(BaseConDict):
                         ru = ru_words
                 ru = ru.lower().strip()
                 en = en.lower().strip()
-                token = hashlib.md5(bytes(en, 'utf-8')).hexdigest()
-                # search token
-                sql_list = "SELECT `token` FROM `term` WHERE `token`=(?)"
-                cur.execute(sql_list, (token,))
-                if cur.fetchone():
-                    print('Words already contained in database.')
-                    break
-                sql_list1 = "INSERT INTO `term` (`token`, `en`) VALUES ((?), (?))"
-                cur.execute(sql_list1, (token, en))
-                sql_list2 = "INSERT INTO `translate` (`term`, `user_id`, `rus`) VALUES (?, ?, ?)"
-                cur.execute(sql_list2, (token, self.user_id, ru))
-                sql_list3 = "INSERT INTO `progress` (`translate_id`) VALUES (?)"
-                cur.execute(sql_list3, (cur.lastrowid,))
+                self.command_add_kinds(cur, en, ru)
+            except DublicationDbData:
+                print('Words already contained in database.')
+                break
             except (sqlite3.DatabaseError, IncorrectDbData) as er:
                 if DEBUG: print(er)
                 print('Incorrect information, change data')
@@ -293,6 +288,44 @@ class Condt(BaseConDict):
                 break
         cur.close()
         return 'add'
+
+    def command_add_kinds(self, cur, en, ru):
+        token = hashlib.md5(bytes(en, 'utf-8')).hexdigest()
+        # search token
+        sql_list = "SELECT `token` FROM `term` WHERE `token`=(?)"
+        cur.execute(sql_list, (token,))
+        if cur.fetchone(): raise DublicationDbData()
+        # insert in to tables
+        sql_list1 = "INSERT INTO `term` (`token`, `en`) VALUES ((?), (?))"
+        cur.execute(sql_list1, (token, en))
+        sql_list2 = "INSERT INTO `translate` (`term`, `user_id`, `rus`) VALUES (?, ?, ?)"
+        cur.execute(sql_list2, (token, self.user_id, ru))
+        sql_list3 = "INSERT INTO `progress` (`translate_id`) VALUES (?)"
+        cur.execute(sql_list3, (cur.lastrowid,))
+        return 0
+
+    def command_export(self, arg=None):
+        global EXPORT_NAME, DEBUG
+        if arg:
+            export_name = arg + ".csv"
+        else:
+            d = datetime.date.today()
+            export_name = EXPORT_NAME + d.strftime("%Y_%m_%d") + ".csv"
+        try:
+            cur = self.connect.cursor()
+            writer_csv = csv.writer(open(export_name, 'w'), delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            writer_csv.writerow(['ENGLISH','RUSSIAN'])
+            sql_list = "SELECT `term`.`en`, `translate`.`rus` FROM `translate` LEFT JOIN `term` ON (`translate`.`term`=`term`.`token`) WHERE `translate`.`user_id`=(?) ORDER BY `term`.`en`, `translate`.`rus`"
+            cur.execute(sql_list, (self.user_id,))
+            for result in cur.fetchall():
+                writer_csv.writerow(result)
+        except Exception as e:
+            if DEBUG: print(e)
+            print("Export error")
+        else:
+            cur.close()
+            print("Export finished successfully to file: {0}".format(export_name))
+        return 'export'
 
     def command_edit(self, translate_id):
         """Edit translate words form DB, search by ID"""
