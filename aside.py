@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 #-*- coding: utf-8 -*-
 
-import re, configparser, json
+import re, configparser, json, signal
 from urllib import request
 
-YANDEX_TRANSLATE = "http://translate.yandex.net/api/v1/tr.json/translate?lang="
+YANDEX_TRANSLATE_JSON = "http://translate.yandex.net/api/v1/tr.json/translate?lang="
+TEST_CONNECT = "http://ya.ru/"
 
 def get_config_data(filename):
     result = {'database': None, 'defuser': None}
@@ -26,10 +27,11 @@ def get_command(raw_str):
     return command
 
 def get_translate(for_translate, trans_type):
+    global YANDEX_TRANSLATE_JSON
     result = False
     prepate_url = request.pathname2url(for_translate)
     trans_types = {'en': 'en-ru', 'ru': 'ru-en'}
-    prepate_url = YANDEX_TRANSLATE + trans_types[trans_type] + "&text=" + prepate_url
+    prepate_url = YANDEX_TRANSLATE_JSON + trans_types[trans_type] + "&text=" + prepate_url
     try:
         conn = request.urlopen(prepate_url)
     except Exception as e:
@@ -44,3 +46,14 @@ def get_translate(for_translate, trans_type):
             print(e)
     conn.close()
     return result
+
+def get_test_connection():
+    global TEST_CONNECT
+    try:
+        conn = request.urlopen(TEST_CONNECT)
+        result = True if conn.getcode() == 200 else False
+    except Exception as e:
+        print('Test connection False,', e)
+        return False
+    conn.close()
+    return result 

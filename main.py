@@ -6,7 +6,7 @@ from condt import Condt
 import getpass, os
 
 CONF_NAME = 'condt.conf' 
-PREFIX = "{0}@ConDict>>>"
+PREFIX = "{0}@ConDict[{1}]>>>"
 WELCOM = """****************************************************
 *** Good day.                                    ***
 *** For help, use the command ".help", nice work.***
@@ -28,7 +28,8 @@ def main():
         return 0
     print(WELCOM)
     while (True):
-        prefix = PREFIX.format(account.name)
+        conn_status = 'online' if account.online else 'offline'
+        prefix = PREFIX.format(account.name, conn_status)
         command = input(prefix)
         get_command = account.handling_command(command)
         if get_command is None:

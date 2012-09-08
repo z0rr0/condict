@@ -14,6 +14,7 @@ class BaseConDict(object):
     """Base Console Dictionary class"""
     def __init__(self, name, dbfile):
         self.connect = sqlite3.connect(dbfile)
+        self.online = False
         self.name = name
     def __repr__(self):
         return "<ConDict object for {0}>".format(self.name)
@@ -34,6 +35,7 @@ class Condt(BaseConDict):
         '.en': {'desc': 'dictionary mode English to Russian', 'command': None},
         '.ru': {'desc': 'dictionary mode Russian to English', 'command': None},
         '.add': {'desc': 'add new words', 'command': None},
+        '.connect': {'desc': 'test connection', 'command': None},
         # '.edit': {'desc': 'edit words', 'command': None},
         # '.del': {'desc': 'delete words', 'command': None},
         '.exit': {'desc': 'quit from program', 'command': None},
@@ -43,6 +45,7 @@ class Condt(BaseConDict):
         self.__pcounter = 3
         self.init_command()
         self.user_id = self.get_user()
+        self.command_connect()
 
     def get_user(self):
         sqlstr="SELECT id FROM user WHERE name=(?) AND password=(?)"
@@ -66,6 +69,7 @@ class Condt(BaseConDict):
         self.COMMANDS['.en']['command'] = self.command_en
         self.COMMANDS['.ru']['command'] = self.command_ru
         self.COMMANDS['.add']['command'] = self.command_add
+        self.COMMANDS['.connect']['command'] = self.command_connect
 
     def hash_pass(self, password):
         result = bytes(password.strip() + SALT, 'utf-8')
@@ -206,8 +210,11 @@ class Condt(BaseConDict):
         print(self.command_enru(text, 'ru'))
         return 'ru'
     def command_enru(self, text, tr_type):
+        if not self.online:
+            return "Offline, please test connect with '.connect' command"
         result = get_translate(text, tr_type)
         if not result or result['code'] != 200:
+            self.command_connect()
             return "Error, not foud translate"
         return result['text']
 
@@ -272,6 +279,8 @@ class Condt(BaseConDict):
                 cur.execute(sql_list1, (token, en))
                 sql_list2 = "INSERT INTO `translate` (`term`, `user_id`, `rus`) VALUES (?, ?, ?)"
                 cur.execute(sql_list2, (token, self.user_id, ru))
+                sql_list3 = "INSERT INTO `progress` (`translate_id`) VALUES (?)"
+                cur.execute(sql_list3, (cur.lastrowid,))
             except (sqlite3.DatabaseError, IncorrectDbData) as er:
                 if DEBUG: print(er)
                 print('Incorrect information, change data')
@@ -289,3 +298,12 @@ class Condt(BaseConDict):
         pass
     def command_delete(self, id_or_pattern):
         pass
+
+    def command_connect(self, arg=None):
+        result = get_test_connection()
+        if result:
+            print("Ok connection")
+        else:
+            print("Error connection")
+        self.online = result
+        return 'connect'
