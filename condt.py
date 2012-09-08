@@ -298,10 +298,13 @@ class Condt(BaseConDict):
         # search token
         sql_list = "SELECT `token` FROM `term` WHERE `token`=(?)"
         cur.execute(sql_list, (token,))
+        # if cur.fetchone(): raise DublicationDbData()
+        if not cur.fetchone():
+            # insert in to tables
+            sql_list1 = "INSERT INTO `term` (`token`, `en`) VALUES ((?), (?))"
+            cur.execute(sql_list1, (token, en))
+        cur.execute("SELECT `id` FROM `translate` WHERE `term`=(?) AND `user_id`=(?)", (token, self.user_id))
         if cur.fetchone(): raise DublicationDbData()
-        # insert in to tables
-        sql_list1 = "INSERT INTO `term` (`token`, `en`) VALUES ((?), (?))"
-        cur.execute(sql_list1, (token, en))
         sql_list2 = "INSERT INTO `translate` (`term`, `user_id`, `rus`) VALUES (?, ?, ?)"
         cur.execute(sql_list2, (token, self.user_id, ru))
         translate_id = cur.lastrowid
@@ -351,13 +354,17 @@ class Condt(BaseConDict):
             ru = input('Ru [' + result[1] + ']:')
             if not ru: ru = result[1]
             # new token
+            need_del = False
             token = hashlib.md5(bytes(en, 'utf-8')).hexdigest()
-            cur.execute("INSERT INTO `term` (`token`, `en`) VALUES ((?), (?))", (token, en))
+            if token != result[2]:
+                cur.execute("INSERT INTO `term` (`token`, `en`) VALUES ((?), (?))", (token, en))
+                need_del = True
             # translate
             cur.execute("UPDATE `translate` SET `rus`=(?), `term`=(?) WHERE `term`=(?) AND `user_id`=(?)", (ru, token, result[2], self.user_id))
             # delete in term if it needed
-            cur.execute("SELECT `id` FROM `translate` WHERE `term`=(?)", (result[2],))
-            if not cur.fetchone(): cur.execute("DELETE FROM `term` WHERE `token`=(?)", (result[2],))
+            if need_del:
+                cur.execute("SELECT `id` FROM `translate` WHERE `term`=(?) LIMIT 1", (result[2],))
+                if not cur.fetchone(): cur.execute("DELETE FROM `term` WHERE `token`=(?)", (result[2],))
         except IncorrectDbData as e:
             print('Record not found for current user.')
         except (ValueError, sqlite3.DatabaseError) as er:
