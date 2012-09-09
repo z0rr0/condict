@@ -303,11 +303,11 @@ class Condt(BaseConDict):
         if not cur.fetchone():
             # insert in to tables
             sql_list1 = "INSERT INTO `term` (`token`, `en`) VALUES ((?), (?))"
-            cur.execute(sql_list1, (token, en))
+            cur.execute(sql_list1, (token, prepare_str(en)))
         cur.execute("SELECT `id` FROM `translate` WHERE `term`=(?) AND `user_id`=(?)", (token, self.user_id))
         if cur.fetchone(): raise DublicationDbData()
         sql_list2 = "INSERT INTO `translate` (`term`, `user_id`, `rus`) VALUES (?, ?, ?)"
-        cur.execute(sql_list2, (token, self.user_id, ru))
+        cur.execute(sql_list2, (token, self.user_id, prepare_str(ru)))
         translate_id = cur.lastrowid
         sql_list3 = "INSERT INTO `progress` (`translate_id`) VALUES (?)"
         cur.execute(sql_list3, (translate_id,))
@@ -357,10 +357,10 @@ class Condt(BaseConDict):
             need_del = False
             token = hashlib.md5(bytes(en, 'utf-8')).hexdigest()
             if token != result[2]:
-                cur.execute("INSERT INTO `term` (`token`, `en`) VALUES ((?), (?))", (token, en))
+                cur.execute("INSERT INTO `term` (`token`, `en`) VALUES ((?), (?))", (token, prepare_str(en)))
                 need_del = True
             # translate
-            cur.execute("UPDATE `translate` SET `rus`=(?), `term`=(?) WHERE `term`=(?) AND `user_id`=(?)", (ru, token, result[2], self.user_id))
+            cur.execute("UPDATE `translate` SET `rus`=(?), `term`=(?) WHERE `term`=(?) AND `user_id`=(?)", (prepare_str(ru), token, result[2], self.user_id))
             # delete recodrs in term if it needed
             if need_del:
                 cur.execute("SELECT `id` FROM `translate` WHERE `term`=(?) LIMIT 1", (result[2],))

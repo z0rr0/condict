@@ -6,6 +6,8 @@ from urllib import request
 
 YANDEX_TRANSLATE_JSON = "http://translate.yandex.net/api/v1/tr.json/translate?lang="
 TEST_CONNECT = "http://ya.ru/"
+CHECK_MANY_SPACE = re.compile(r"\s+")
+
 
 def get_config_data(filename):
     result = {'database': None, 'defuser': None}
@@ -18,8 +20,13 @@ def get_config_data(filename):
         pass
     return result
 
+def prepare_str(input_str):
+    global CHECK_MANY_SPACE
+    result = CHECK_MANY_SPACE.sub(" ", input_str.strip())
+    return result
+
 def get_command(raw_str):
-    result = re.sub(r"\s+", " ", raw_str.strip())
+    result = prepare_str(raw_str)
     # return [command, str_params]
     command = result.split(" ", 1)
     if len(command) == 1:
