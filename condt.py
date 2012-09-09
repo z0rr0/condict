@@ -40,7 +40,7 @@ class Condt(BaseConDict):
         '.connect': {'desc': 'test connection', 'command': None},
         '.export': {'desc': 'export user dictionary to CSV file', 'command': None},
         '.edit': {'desc': 'edit words', 'command': None},
-        # '.del': {'desc': 'delete words', 'command': None},
+        '.delete': {'desc': 'delete words', 'command': None},
         '.exit': {'desc': 'quit from program', 'command': None},
         }
     def __init__(self, name, dbfile):
@@ -75,6 +75,7 @@ class Condt(BaseConDict):
         self.COMMANDS['.connect']['command'] = self.command_connect
         self.COMMANDS['.export']['command'] = self.command_export
         self.COMMANDS['.edit']['command'] = self.command_edit
+        self.COMMANDS['.delete']['command'] = self.command_delete
 
     def hash_pass(self, password):
         result = bytes(password.strip() + SALT, 'utf-8')
@@ -340,14 +341,13 @@ class Condt(BaseConDict):
         """Edit translate words form DB, search by ID"""
         # search id
         cur = self.connect.cursor()
-        # in term data always - add, may be delete
-        # in translate data - edit
         try:
             translate_id = int(translate_id)
-            sql_str = "SELECT `term`.`en`, `translate`.`rus`, `term`.`token` FROM `translate` LEFT JOIN `term` ON (`translate`.`term`=`term`.`token`) WHERE `translate`.`id`=(?) AND `user_id`=(?)"
-            cur.execute(sql_str, (translate_id, self.user_id))
-            result = cur.fetchone()
-            if not result: raise IncorrectDbData()
+            result = self.check_user_translate(cur, translate_id)
+            if not result: 
+                raise IncorrectDbData()
+            else:
+                result = result[0]
             # enter en-ru
             en = input('En [' + result[0] + ']:')
             if not en: en = result[0]
@@ -361,25 +361,65 @@ class Condt(BaseConDict):
                 need_del = True
             # translate
             cur.execute("UPDATE `translate` SET `rus`=(?), `term`=(?) WHERE `term`=(?) AND `user_id`=(?)", (ru, token, result[2], self.user_id))
-            # delete in term if it needed
+            # delete recodrs in term if it needed
             if need_del:
                 cur.execute("SELECT `id` FROM `translate` WHERE `term`=(?) LIMIT 1", (result[2],))
                 if not cur.fetchone(): cur.execute("DELETE FROM `term` WHERE `token`=(?)", (result[2],))
         except IncorrectDbData as e:
             print('Record not found for current user.')
-        except (ValueError, sqlite3.DatabaseError) as er:
+        except (TypeError, ValueError, sqlite3.DatabaseError) as er:
             if DEBUG: print(er)
             print("Error, use '.edit ID' (ID is numerical)")
         else:
             self.connect.commit()
             cur.close()
+            print('Successfully update')
         return 'edit'
 
     def command_delete(self, id_or_pattern):
         """Delete translate words form DB, search by ID or pattern (several rows)"""
-        pass
+        cur = self.connect.cursor()
+        try:
+            try:
+                pattern = int(id_or_pattern) 
+                by_pattern = False
+            except ValueError as e:
+                pattern = id_or_pattern
+                by_pattern = True
+            result = self.check_user_translate(cur, pattern, by_pattern)
+            if not result: raise IncorrectDbData()
+            print('Records for delete:')
+            id_for_del = []
+            for row in result:
+                # id, token
+                id_for_del.append((row[3], row[2]))
+                print("ID={0}:\t'{1}'".format(row[3], row[0]))
+            correction = input("It is right [N/y]?")
+            if correction not in ('Y', 'y'):
+                return 'delete'
+            # delete for correction information
+            for rec in id_for_del:
+                # delete translate
+                cur.execute("DELETE FROM `translate` WHERE `id`=(?)", (rec[0],))
+                # delete progress
+                cur.execute("DELETE FROM `progress` WHERE `translate_id`=(?)", (rec[0],))
+                # del from term if it needed
+                cur.execute("SELECT `term` FROM `translate` WHERE `term`=(?) LIMIT 1", (rec[1],))
+                if not cur.fetchone():
+                    cur.execute("DELETE FROM `term` WHERE `token`=(?)", (rec[1],))
+        except IncorrectDbData as e:
+            print('Record not found for current user.')
+        except (sqlite3.DatabaseError, TypeError) as er:
+            if DEBUG: print(er)
+            print("Error, use '.delete [ID or pattern]' (ID is numerical)")
+        else:
+            self.connect.commit()
+            cur.close()
+            print('Successfully update')
+        return 'delete'
 
     def command_connect(self, arg=None):
+        """test connection, set user status"""
         result = get_test_connection()
         if result:
             print("Ok connection")
@@ -387,3 +427,14 @@ class Condt(BaseConDict):
             print("Error connection")
         self.online = result
         return 'connect'
+
+    def check_user_translate(self, cur, for_search, by_pattern=False):
+        sql_str = "SELECT `term`.`en`, `translate`.`rus`, `term`.`token`, `translate`.`id` FROM `translate` LEFT JOIN `term` ON (`translate`.`term`=`term`.`token`) "
+        if by_pattern:
+            pattern = for_search + '%' 
+            sql_str += "WHERE `term`.`en` LIKE (?) AND `user_id`=(?) ORDER BY `translate`.`id`"
+        else:
+            pattern = for_search
+            sql_str += "WHERE `translate`.`id`=(?) AND `user_id`=(?) ORDER BY `translate`.`id`"
+        cur.execute(sql_str, (pattern, self.user_id))
+        return cur.fetchall()
