@@ -6,7 +6,7 @@ from condt import Condt
 import getpass, os
 
 CONF_NAME = 'condt.conf' 
-PREFIX = "{0}@ConDict[{1}]>>>"
+PREFIX = "{0}@ConDict[{1}]$"
 WELCOM = """****************************************************
 *** Good day.                                    ***
 *** For help, use the command ".help", nice work.***

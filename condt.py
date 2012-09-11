@@ -39,6 +39,7 @@ class Condt(BaseConDict):
         '.add': {'desc': 'add new words', 'command': None},
         '.connect': {'desc': 'test connection', 'command': None},
         '.export': {'desc': 'export user dictionary to CSV file', 'command': None},
+        '.import': {'desc': 'import user dictionary from CSV file (start row=2)', 'command': None},
         '.edit': {'desc': 'edit words', 'command': None},
         '.delete': {'desc': 'delete words', 'command': None},
         '.exit': {'desc': 'quit from program', 'command': None},
@@ -74,6 +75,7 @@ class Condt(BaseConDict):
         self.COMMANDS['.add']['command'] = self.command_add
         self.COMMANDS['.connect']['command'] = self.command_connect
         self.COMMANDS['.export']['command'] = self.command_export
+        self.COMMANDS['.import']['command'] = self.command_import
         self.COMMANDS['.edit']['command'] = self.command_edit
         self.COMMANDS['.delete']['command'] = self.command_delete
 
@@ -438,3 +440,42 @@ class Condt(BaseConDict):
             sql_str += "WHERE `translate`.`id`=(?) AND `user_id`=(?) ORDER BY `translate`.`id`"
         cur.execute(sql_str, (pattern, self.user_id))
         return cur.fetchall()
+
+    def command_import(self, import_name):
+        start = False
+        cur = self.connect.cursor()
+        try:
+            read_csv = csv.reader(open(import_name), delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            for row in read_csv:
+                if not start:
+                    start = True
+                    continue
+                en = row[0]
+                ru = row[1]
+                # check term
+                token = hashlib.md5(bytes(prepare_str(en), 'utf-8')).hexdigest()
+                # check translate
+                cur.execute("SELECT `term` FROM `translate` WHERE `user_id`=(?) AND `term`=(?)", (self.user_id, token))
+                if not cur.fetchone():
+                    # check term
+                    cur.execute("SELECT `token` FROM `term` WHERE `token`=(?)", (token,))
+                    if not cur.fetchone():
+                        cur.execute("INSERT INTO `term` (`token`, `en`) VALUES ((?), (?))", (token, prepare_str(en)))
+                    cur.execute("INSERT INTO `translate` (term,user_id,rus) VALUES (?,?,?)", (token, self.user_id, prepare_str(ru)))
+                    translate_id = cur.lastrowid
+                    cur.execute("INSERT INTO `progress` (`translate_id`) VALUES (?)", (translate_id,))
+                    print("Added: {0}".format(en))
+                else:
+                    print("Dublicate record: {0}".format(en))
+                    continue
+        except sqlite3.DatabaseError as e:
+            if DEBUG: print(e)
+            print("DB error for {0}".format(en))
+        except (TypeError, IOError) as er:
+            if DEBUG: print(er)
+            cur.close()
+            print("Please write '.import import_file.csv'")
+        else:
+            self.connect.commit()
+            cur.close()
+        return 'import'
