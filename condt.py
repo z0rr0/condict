@@ -38,15 +38,19 @@ class Condt(BaseConDict):
         '.ru': {'desc': 'dictionary mode Russian to English', 'command': None},
         '.add': {'desc': 'add new words', 'command': None},
         '.connect': {'desc': 'test connection', 'command': None},
-        '.export': {'desc': 'export user dictionary to CSV file', 'command': None},
-        '.import': {'desc': 'import user dictionary from CSV file (start row=2)', 'command': None},
+        '.export': {'desc': 'export user dictionary to CSV file (UTF-8)', 'command': None},
+        '.import': {'desc': 'import user dictionary from CSV file (UTF-8, start row=2)', 'command': None},
         '.edit': {'desc': 'edit words', 'command': None},
         '.delete': {'desc': 'delete words', 'command': None},
         '.exit': {'desc': 'quit from program', 'command': None},
+        '.test': {'desc': 'start test (default en)', 'command': None},
+        '.testru': {'desc': 'start ru-test', 'command': None},
+        '.testmix': {'desc': 'start en-ru test', 'command': None},
         }
-    def __init__(self, name, dbfile):
+    def __init__(self, name, dbfile, ctest=10):
         super().__init__(name, dbfile)       
         self.__pcounter = 3
+        self.ctest = ctest
         self.init_command()
         self.user_id = self.get_user()
         self.command_connect()
@@ -445,11 +449,12 @@ class Condt(BaseConDict):
         start = False
         cur = self.connect.cursor()
         try:
-            read_csv = csv.reader(open(import_name), delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            read_csv = csv.reader(open(import_name), delimiter=';', quotechar='|', quoting=csv.QUOTE_MINIMAL)
             for row in read_csv:
                 if not start:
                     start = True
                     continue
+                if len(row) < 2: continue
                 en = row[0]
                 ru = row[1]
                 # check term

@@ -7,16 +7,18 @@ from urllib import request
 YANDEX_TRANSLATE_JSON = "http://translate.yandex.net/api/v1/tr.json/translate?lang="
 TEST_CONNECT = "http://ya.ru/"
 CHECK_MANY_SPACE = re.compile(r"\s+")
+DEFCTEST = 10
 
 
 def get_config_data(filename):
-    result = {'database': None, 'defuser': None}
+    result = {'database': None, 'defuser': None, 'defctest': DEFCTEST}
     config = configparser.ConfigParser()
     try:
         config.read(filename)
         result['database'] = config['database']['dbname']
         result['defuser'] = config['user']['default_user']
-    except (KeyError, IndexError, TypeError) as er:
+        result['defctest'] = int(config['user']['count_test'])
+    except (ValueError, KeyError, IndexError, TypeError) as er:
         pass
     return result
 
