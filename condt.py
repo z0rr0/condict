@@ -30,22 +30,38 @@ class BaseConDict(object):
 
 class Condt(BaseConDict):
     """Condt - class for ConDict"""
-    COMMANDS = {'.help': {'desc': 'list commands', 'command': None}, 
-        '.chname': {'desc': 'change current user name', 'command': None},
-        '.chpassword': {'desc': 'change current password', 'command': None},
-        '.list': {'desc': 'list users words', 'command': None},
-        '.en': {'desc': 'dictionary mode English to Russian', 'command': None},
-        '.ru': {'desc': 'dictionary mode Russian to English', 'command': None},
-        '.add': {'desc': 'add new words', 'command': None},
-        '.connect': {'desc': 'test connection', 'command': None},
-        '.export': {'desc': 'export user dictionary to CSV file (UTF-8)', 'command': None},
-        '.import': {'desc': 'import user dictionary from CSV file (UTF-8, start row=2)', 'command': None},
-        '.edit': {'desc': 'edit words', 'command': None},
-        '.delete': {'desc': 'delete words', 'command': None},
-        '.exit': {'desc': 'quit from program', 'command': None},
-        '.test': {'desc': 'start test (default en)', 'command': None},
-        '.testru': {'desc': 'start ru-test', 'command': None},
-        '.testmix': {'desc': 'start en-ru test', 'command': None},
+    COMMANDS = {'.help': {'desc': 'list commands', 'command': None, 
+            'full': 'output list commands'}, 
+        '.chname': {'desc': 'change current user name', 'command': None,
+            'full': 'change current info: login and name'},
+        '.chpassword': {'desc': 'change current password', 'command': None,
+            'full': 'change password for current password'},
+        '.list': {'desc': 'list users words', 'command': None,
+            'full': 'list user words/patterns, ".list" or ".list pattern"'},
+        '.en': {'desc': 'dictionary mode English to Russian', 'command': None,
+            'full': 'yandex translate English to Russian'},
+        '.ru': {'desc': 'dictionary mode Russian to English', 'command': None,
+            'full': 'yandex translate Russian to English'},
+        '.add': {'desc': 'add new words', 'command': None,
+            'full': 'add new word/pattern'},
+        '.connect': {'desc': 'test connection', 'command': None,
+            'full': 'test internet connection'},
+        '.export': {'desc': 'export user dictionary', 'command': None,
+            'full': 'export user dictionary to CSV file, encoding UTF-8'},
+        '.import': {'desc': 'import user dictionary', 'command': None,
+            'full': 'import user dictionary form CSV file, encoding UTF-8'},
+        '.edit': {'desc': 'edit words', 'command': None,
+            'full': 'edit word/pattern, search by ID ".edit ID"'},
+        '.delete': {'desc': 'delete words', 'command': None,
+            'full': 'delete word/pattern, search by ID, ".delete ID"'},
+        '.exit': {'desc': 'quit from program', 'command': None,
+            'full': 'quit form program'},
+        '.test': {'desc': 'start test (default en)', 'command': None,
+            'full': 'test'},
+        '.testru': {'desc': 'start ru-test', 'command': None,
+            'full': 'test'},
+        '.testmix': {'desc': 'start en-ru test', 'command': None,
+            'full': 'test'},
         }
     def __init__(self, name, dbfile, ctest=10):
         super().__init__(name, dbfile)       
@@ -157,9 +173,17 @@ class Condt(BaseConDict):
         return result
 
     def command_help(self, arg=None):
-        for key, item in self.COMMANDS.items():
-            print("{0:.<30}{1}".format(key, item['desc']))
-        return '.help'
+        if arg:
+            s = '.' + arg
+            result = self.COMMANDS.get(s)
+            if result:
+                print("'{0}'\t{1}".format(s,result['full']))    
+            else:
+                print('not found, use ".help"')
+        else:
+            for key, item in self.COMMANDS.items():
+                print("{0:.<30}{1}".format(key, item['desc']))
+        return 'help'
 
     def command_exit(self, arg=None):
         return 0
