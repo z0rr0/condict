@@ -56,12 +56,12 @@ class Condt(BaseConDict):
             'full': 'delete word/pattern, search by ID, ".delete ID"'},
         '.exit': {'desc': 'quit from program', 'command': None,
             'full': 'quit form program'},
-        '.test': {'desc': 'start test (default en)', 'command': None,
-            'full': 'test'},
-        '.testru': {'desc': 'start ru-test', 'command': None,
-            'full': 'test'},
-        '.testmix': {'desc': 'start en-ru test', 'command': None,
-            'full': 'test'},
+        # '.test': {'desc': 'start test (default en)', 'command': None,
+        #     'full': 'test'},
+        # '.testru': {'desc': 'start ru-test', 'command': None,
+        #     'full': 'test'},
+        # '.testmix': {'desc': 'start en-ru test', 'command': None,
+        #     'full': 'test'},
         }
     def __init__(self, name, dbfile, ctest=10):
         super().__init__(name, dbfile)       
@@ -347,13 +347,13 @@ class Condt(BaseConDict):
         """export all user dictionary in CSV file"""
         global EXPORT_NAME, DEBUG
         if arg:
-            export_name = arg + ".csv"
+            export_name = arg
         else:
             d = datetime.date.today()
             export_name = EXPORT_NAME + d.strftime("%Y_%m_%d") + ".csv"
         try:
             cur = self.connect.cursor()
-            writer_csv = csv.writer(open(export_name, 'w'), delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            writer_csv = csv.writer(open(export_name, 'w', newline='', encoding='utf-8'), dialect='excel', delimiter=';', quoting=csv.QUOTE_ALL)
             writer_csv.writerow(['ENGLISH','RUSSIAN'])
             sql_list = "SELECT `term`.`en`, `translate`.`rus` FROM `translate` LEFT JOIN `term` ON (`translate`.`term`=`term`.`token`) WHERE `translate`.`user_id`=(?) ORDER BY `term`.`en`, `translate`.`rus`"
             cur.execute(sql_list, (self.user_id,))
@@ -473,7 +473,7 @@ class Condt(BaseConDict):
         start = False
         cur = self.connect.cursor()
         try:
-            read_csv = csv.reader(open(import_name), delimiter=';', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+            read_csv = csv.reader(open(import_name, newline='', encoding='utf-8'), dialect='excel', delimiter=';', quoting=csv.QUOTE_ALL)
             for row in read_csv:
                 if not start:
                     start = True
