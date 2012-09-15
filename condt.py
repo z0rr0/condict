@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 #-*- coding: utf-8 -*-
 
-import sqlite3, hashlib, getpass, datetime, csv
+import sqlite3, hashlib, getpass, datetime, csv, random
 from aside import *
 
 # please, change this stirg for your application
@@ -56,12 +56,12 @@ class Condt(BaseConDict):
             'full': 'delete word/pattern, search by ID, ".delete ID"'},
         '.exit': {'desc': 'quit from program', 'command': None,
             'full': 'quit form program'},
-        # '.test': {'desc': 'start test (default en)', 'command': None,
-        #     'full': 'test'},
-        # '.testru': {'desc': 'start ru-test', 'command': None,
-        #     'full': 'test'},
-        # '.testmix': {'desc': 'start en-ru test', 'command': None,
-        #     'full': 'test'},
+        '.test': {'desc': 'start test (default en)', 'command': None,
+            'full': 'test'},
+        '.testru': {'desc': 'start ru-test', 'command': None,
+            'full': 'test'},
+        '.testmix': {'desc': 'start en-ru test', 'command': None,
+            'full': 'test'},
         }
     def __init__(self, name, dbfile, ctest=10):
         super().__init__(name, dbfile)       
@@ -98,6 +98,9 @@ class Condt(BaseConDict):
         self.COMMANDS['.import']['command'] = self.command_import
         self.COMMANDS['.edit']['command'] = self.command_edit
         self.COMMANDS['.delete']['command'] = self.command_delete
+        self.COMMANDS['.test']['command'] = self.command_testen
+        self.COMMANDS['.testru']['command'] = self.command_testru
+        self.COMMANDS['.testmix']['command'] = self.command_testmix
 
     def hash_pass(self, password):
         result = bytes(password.strip() + SALT, 'utf-8')
@@ -470,6 +473,7 @@ class Condt(BaseConDict):
         return cur.fetchall()
 
     def command_import(self, import_name):
+        """import user dict to CSV"""
         start = False
         cur = self.connect.cursor()
         try:
@@ -508,3 +512,93 @@ class Condt(BaseConDict):
             self.connect.commit()
             cur.close()
         return 'import'
+
+    def command_testen(self, arg):
+        self.command_test(arg, 0)
+        return 'test-en'
+    def command_testru(self, arg):
+        self.command_test(arg, 1)
+        return 'test-ru'
+    def command_testmix(self, arg):
+        self.command_test(arg, 2)
+        return 'test-mix'
+
+    def command_test(self, arg=None, type_test=0):
+        cur = self.connect.cursor()
+        created = datetime.datetime.now()
+        name = ''
+        try:
+            arg = int(arg) if arg else self.ctest
+        except (TypeError, ValueError) as e:
+            arg = self.ctest
+        # start test
+        types_test = ('en-ru', 'ru-en', 'mix')
+        print("Start test, type: '{0}', count: {1}".format(types_test[type_test], arg))
+        try:
+            # insert `test`
+            cur.execute("INSERT INTO `test` (`user_id`, `name`, `created`) VALUES (?,?,?)", (self.user_id, types_test[type_test], created))
+            test_id = cur.lastrowid
+            alreadyq, to_save, progress = [], [], []
+            for i in range(1, arg+1):
+                # 0-en, 1-ru, 2-mix
+                question, answer, translate_id  = self.gen_question(cur, type_test, alreadyq)
+                if question is None:
+                    print("too few words")
+                    break
+                alreadyq.append(str(translate_id))
+                print('\nQuestion {0}: {1}'.format(i,question))
+                enter = input('translate: ')
+                # check error
+                er = False if check_ans(answer, enter) else True
+                result_row = {"test_id": test_id, "num": i, "question": question, 'answer': answer, 'enter': enter, 'error': er}
+                to_save.append(result_row)
+                progress_error = 1 if er else 0
+                progress.append({'translate_id': translate_id, 'error': progress_error})
+            # save results
+            cur.executemany("INSERT INTO `result` (`test_id`,`number`,`question`,`answer`,`enter`,`error`) VALUES (:test_id, :num, :question, :answer, :enter, :error)", to_save)
+            # update test
+            cur.execute("UPDATE `test` SET `finished`=(?) WHERE `id`=(?)", (datetime.datetime.now(), test_id))
+            # update progress
+            cur.executemany("UPDATE `progress` SET `all`=`all`+1, `error`=`error`+:error WHERE `translate_id`=:translate_id", progress)
+        except sqlite3.DatabaseError as e:
+            print("Error")
+            if DEBUG: print(e)
+            self.connect.rollback()
+            cur.close()
+        else:
+            self.connect.commit()
+            cur.close()
+            print("Test successfully finished")
+        self.print_test_result(to_save)
+
+    def print_test_result(self, tests):
+        right, error = 0, 0
+        print("*******YOUR ERRORS********")
+        for q in tests:
+            if q['error']:
+                error += 1
+                print("\nQ#{0}: {1}\n[correcnt] {2}\n[you] {3}".format(q['num'],q['question'],q['answer'],q['enter']))
+            else:
+                right += 1
+        print("**************************")
+        print("\nResult: {0} error(s) from {1}".format(error,(right + error)))
+
+    def gen_question(self, cur, type_test, alreadyq):
+        sql_list = "SELECT `translate`.`id`, `term`.`en`, `translate`.`rus` FROM `translate` LEFT JOIN `term` ON (`translate`.`term`=`term`.`token`) WHERE `translate`.`user_id`=" + str(self.user_id) + " AND (`translate`.`id` NOT IN (" + ", ".join(alreadyq) + "))"
+        cur.execute(sql_list)
+        for_search = cur.fetchall()
+        if not for_search:
+            return None, None, None
+        row = for_search[random.randint(0,len(for_search)-1)]
+        # 0 => en, 1 => ru, 2 => mix
+        translate_id = row[0]
+        if type_test == 0:
+            question, answer = row[1], row[2]
+        elif type_test == 1:
+            question, answer = row[2], row[1]
+        else:
+            i = random.randint(1,2)
+            j = 1 if i == 2 else 2
+            question, answer = row[i], row[j]
+        return question, answer, translate_id
+

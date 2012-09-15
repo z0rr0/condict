@@ -17,7 +17,7 @@ def get_config_data(filename):
         config.read(filename)
         result['database'] = config['database']['dbname']
         result['defuser'] = config['user']['default_user']
-        result['defctest'] = int(config['user']['count_test'])
+        result['defctest'] = int(config['user']['test_count'])
     except (ValueError, KeyError, IndexError, TypeError) as er:
         pass
     return result
@@ -65,4 +65,9 @@ def get_test_connection():
         print('Test connection False,', e)
         return False
     conn.close()
-    return result 
+    return result
+
+def check_ans(answer, enter):
+    a1 = CHECK_MANY_SPACE.sub(" ", answer.lower().strip())
+    a2 = CHECK_MANY_SPACE.sub(" ", enter.lower().strip())
+    return (a1 == a2)
