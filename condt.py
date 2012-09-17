@@ -49,7 +49,7 @@ class Condt(BaseConDict):
         '.export': {'desc': 'export user dictionary', 'command': None,
             'full': 'export user dictionary to CSV file, encoding UTF-8'},
         '.import': {'desc': 'import user dictionary', 'command': None,
-            'full': 'import user dictionary form CSV file, encoding UTF-8'},
+            'full': 'import user dictionary from CSV file, encoding UTF-8'},
         '.edit': {'desc': 'edit words', 'command': None,
             'full': 'edit word/pattern, search by ID ".edit ID"'},
         '.delete': {'desc': 'delete words', 'command': None,
@@ -57,11 +57,11 @@ class Condt(BaseConDict):
         '.exit': {'desc': 'quit from program', 'command': None,
             'full': 'quit form program'},
         '.test': {'desc': 'start test (default en)', 'command': None,
-            'full': 'test'},
+            'full': 'start en-ru test'},
         '.testru': {'desc': 'start ru-test', 'command': None,
-            'full': 'test'},
+            'full': 'start ru-en test'},
         '.testmix': {'desc': 'start en-ru test', 'command': None,
-            'full': 'test'},
+            'full': 'start mix test'},
         }
     def __init__(self, name, dbfile, ctest=10):
         super().__init__(name, dbfile)       
@@ -364,6 +364,7 @@ class Condt(BaseConDict):
                 writer_csv.writerow(result)
         except Exception as e:
             if DEBUG: print(e)
+            cur.close()
             print("Export error")
         else:
             cur.close()
@@ -400,9 +401,13 @@ class Condt(BaseConDict):
                 if not cur.fetchone(): cur.execute("DELETE FROM `term` WHERE `token`=(?)", (result[2],))
         except IncorrectDbData as e:
             print('Record not found for current user.')
+            self.connect.rollback()
+            cur.close()
         except (TypeError, ValueError, sqlite3.DatabaseError) as er:
             if DEBUG: print(er)
             print("Error, use '.edit ID' (ID is numerical)")
+            self.connect.rollback()
+            cur.close()
         else:
             self.connect.commit()
             cur.close()
@@ -442,9 +447,13 @@ class Condt(BaseConDict):
                     cur.execute("DELETE FROM `term` WHERE `token`=(?)", (rec[1],))
         except IncorrectDbData as e:
             print('Record not found for current user.')
+            self.connect.rollback()
+            cur.close()
         except (sqlite3.DatabaseError, TypeError) as er:
             if DEBUG: print(er)
             print("Error, use '.delete [ID or pattern]' (ID is numerical)")
+            self.connect.rollback()
+            cur.close()
         else:
             self.connect.commit()
             cur.close()
@@ -503,9 +512,12 @@ class Condt(BaseConDict):
                     continue
         except sqlite3.DatabaseError as e:
             if DEBUG: print(e)
+            self.connect.rollback()
+            cur.close()
             print("DB error for {0}".format(en))
         except (TypeError, IOError) as er:
             if DEBUG: print(er)
+            self.connect.rollback()
             cur.close()
             print("Please write '.import import_file.csv'")
         else:
