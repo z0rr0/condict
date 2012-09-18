@@ -7,7 +7,7 @@ from aside import *
 # please, change this stirg for your application
 SALT = 'r8Uts$jLs74Lgh49_h75&w@dFsS4sgpm3Kqq['
 EXPORT_NAME = 'condict_export_'
-DEBUG = True
+DEBUG = False
 
 class IncorrectDbData(Exception): pass
 class DublicationDbData(Exception): pass
