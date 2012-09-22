@@ -7,7 +7,7 @@ from aside import *
 # please, change this stirg for your application
 SALT = 'r8Uts$jLs74Lgh49_h75&w@dFsS4sgpm3Kqq['
 EXPORT_NAME = 'condict_export_'
-DEBUG = False
+DEBUG = True
 
 class IncorrectDbData(Exception): pass
 class DublicationDbData(Exception): pass
@@ -27,6 +27,9 @@ class BaseConDict(object):
         return valid
     def __del__(self):
         self.connect.close()
+    def prer(self, error):
+        global DEBUG
+        if DEBUG: print(error)
 
 class Condt(BaseConDict):
     """Condt - class for ConDict"""
@@ -72,12 +75,12 @@ class Condt(BaseConDict):
         self.command_connect()
 
     def get_user(self):
+        """get user ID by name and password"""
         sqlstr="SELECT id FROM user WHERE name=(?) AND password=(?)"
         cur = self.connect.cursor()
         ch_user_id = self.check_name(cur)
         if ch_user_id:
-            ch_user_id = ch_user_id[0]
-            # check pass
+            ch_user_id = ch_user_id
             user_id = self.handling_action(cur, ch_user_id)
         else:
             user_id = self.handling_add(cur)
@@ -85,6 +88,7 @@ class Condt(BaseConDict):
         return user_id
 
     def init_command(self):
+        """commands list"""
         self.COMMANDS['.help']['command'] = self.command_help
         self.COMMANDS['.exit']['command'] = self.command_exit
         self.COMMANDS['.chname']['command'] = self.command_chname
@@ -103,26 +107,35 @@ class Condt(BaseConDict):
         self.COMMANDS['.testmix']['command'] = self.command_testmix
 
     def hash_pass(self, password):
+        """create password hash: text => hast string"""
         result = bytes(password.strip() + SALT, 'utf-8')
         result = bytes(hashlib.md5(result).hexdigest(), 'utf-8')
         return hashlib.sha1(result).hexdigest()
 
     def check_name(self, cur):
+        """get user id by name - unique field"""
+        uid = None
         try:
             cur.execute("SELECT id FROM user WHERE name=(?)", (self.name,))
-        except sqlite3.DatabaseError as er:
+            uid = cur.fetchone()
+            if uid: uid = uid[0]
+        except (sqlite3.DatabaseError, IndexError) as er:
+            self.prer(er)
             return None
-        return cur.fetchone()
+        return uid
 
     def check_password(self, cur, user_id, password):
+        """check password"""
         try:
             cur.execute("SELECT id FROM user WHERE id=(?) AND password=(?)", (user_id, self.hash_pass(password)))
         except sqlite3.DatabaseError as er:
+            self.prer(er)
             return None
         return cur.fetchone()
 
     def handling_action(self, cur, ch_user_id):
-        print('"{0}" please enter your password:'.format(self.name))
+        """password request"""
+        print('"{0}", please enter your password:'.format(self.name))
         self.password = input("Password:") if DEBUG else getpass.getpass()
         while(self.__pcounter > 0):
             user_id = self.check_password(cur, ch_user_id, self.password)
@@ -140,6 +153,7 @@ class Condt(BaseConDict):
         return None
 
     def handling_add(self, cur):
+        """add new user, if not found name"""
         while(True):
             want_add = input('Are you want add new user? [Y/n]')
             if want_add in ('', 'y', 'Y'):
@@ -150,12 +164,11 @@ class Condt(BaseConDict):
                 password = input("Password:") if DEBUG else getpass.getpass()
                 transaction_ok = False
                 try:
-                    cur.execute("INSERT INTO user (name, password, full) VALUES (?,?,?)", (name, self.hash_pass(password), fullname))
+                    with self.connect:
+                        cur.execute("INSERT INTO user (name, password, full) VALUES (?,?,?)", (name, self.hash_pass(password), fullname))
                 except sqlite3.DatabaseError as er:
                     print('Incorrect information, change data')
                     continue
-                else:
-                    self.connect.commit()
                 if cur.rowcount == -1:
                     print('Incorrect information, change data')
                     continue
@@ -169,6 +182,7 @@ class Condt(BaseConDict):
         return None
 
     def handling_command(self, command):
+        """parser for user command"""
         command, arg = get_command(command)
         if command not in self.COMMANDS.keys():
             return None
@@ -176,6 +190,7 @@ class Condt(BaseConDict):
         return result
 
     def command_help(self, arg=None):
+        """callback for .help command"""
         if arg:
             s = '.' + arg
             result = self.COMMANDS.get(s)
@@ -189,9 +204,11 @@ class Condt(BaseConDict):
         return 'help'
 
     def command_exit(self, arg=None):
+        # pass
         return 0
 
     def command_chname(self, arg=None):
+        """change user name"""
         cur = self.connect.cursor()
         while(True):
             name = input("You login:")
@@ -199,22 +216,22 @@ class Condt(BaseConDict):
             try:
                 if name == '':
                     raise IncorrectDbData()
-                cur.execute("UPDATE user SET name=(?), full=(?) WHERE id=(?)", (name, fullname, self.user_id))
+                with self.connect:
+                    cur.execute("UPDATE user SET name=(?), full=(?) WHERE id=(?)", (name, fullname, self.user_id))
             except (sqlite3.DatabaseError, IncorrectDbData) as er:
                 print('Incorrect information, change data')
                 e = input('Do you wand exit from name update [N/y]?')
                 if e in ('y', 'Y'):
                     break
                 continue
-            else:
-                self.connect.commit()
-                self.name = name
-                print("You name updated successfully")
-                break
+            self.name = name
+            print("You name updated successfully")
+            break
         cur.close()
         return 'chname'
 
     def command_chpassword(self, arg=None):
+        """change user password"""
         cur = self.connect.cursor()
         while(True):
             password_old = input("Old password:") if DEBUG else getpass.getpass()
@@ -225,30 +242,32 @@ class Condt(BaseConDict):
                     if password1 != password2:
                         raise IncorrectDbData()
                     else:
-                        cur.execute("UPDATE user SET password=(?) WHERE id=(?)", (self.hash_pass(password1), self.user_id))
+                        with self.connect:
+                            cur.execute("UPDATE user SET password=(?) WHERE id=(?)", (self.hash_pass(password1), self.user_id))
                 else:
                     raise IncorrectDbData()
             except (sqlite3.DatabaseError, IncorrectDbData) as er:
-                print('Incorrect information, change data')
+                print('Incorrect information, please change data')
                 e = input('Do you wand exit from password update [N/y]?')
                 if e in ('y', 'Y'):
                     break
                 continue
-            else:
-                self.connect.commit()
-                self.password = password1
-                print("You password updated successfully")
-                break
+            self.password = password1
+            print("You password updated successfully")
+            break
         cur.close()
         return 'chpassword'
 
     def command_en(self, text):
+        """en-ru translate"""
         print(self.command_enru(text, 'en'))
         return 'en'
     def command_ru(self, text):
+        """ru-en translate"""
         print(self.command_enru(text, 'ru'))
         return 'ru'
     def command_enru(self, text, tr_type):
+        """translate, only with online"""
         if not self.online:
             return "Offline, please test connect with '.connect' command"
         result = get_translate(text, tr_type)
@@ -258,6 +277,7 @@ class Condt(BaseConDict):
         return result['text']
 
     def command_list(self, pattern=None):
+        """print user dictionary"""
         cur = self.connect.cursor()
         sql_list = "SELECT `translate`.`id`, `term`.`en`, `translate`.`rus`, `progress`.`all`, `progress`.`error` FROM `translate` LEFT JOIN `term` ON (`translate`.`term`=`term`.`token`) LEFT JOIN `progress` ON (`progress`.`translate_id`=`translate`.`id`) WHERE `translate`.`user_id`=(?) "
         params = (self.user_id,)
@@ -308,21 +328,21 @@ class Condt(BaseConDict):
                         ru = ru_words
                 ru = ru.lower().strip()
                 en = en.lower().strip()
-                translate_id = self.command_add_kinds(cur, en, ru)
+                with self.connect:
+                    translate_id = self.command_add_kinds(cur, en, ru)
             except DublicationDbData:
                 print('Words already contained in database. For search use ".list {0}"'.format(en))
                 break
             except (sqlite3.DatabaseError, IncorrectDbData) as er:
-                if DEBUG: print(er)
+                self.prer(er)
                 print('Incorrect information, change data')
                 ent = input('Do you wand enter new words [Y/n]?')
                 if ent in ('n', 'N'):
                     break
                 continue
-            else:
-                self.connect.commit()
-                print("Words added successfully, ID={0}".format(translate_id))
-                break
+            # may be use "else"
+            print("Words added successfully, ID={0}".format(translate_id))
+            break
         cur.close()
         return 'add'
 
@@ -332,16 +352,17 @@ class Condt(BaseConDict):
         # search token
         sql_list = "SELECT `token` FROM `term` WHERE `token`=(?)"
         cur.execute(sql_list, (token,))
-        # if cur.fetchone(): raise DublicationDbData()
         if not cur.fetchone():
             # insert in to tables
             sql_list1 = "INSERT INTO `term` (`token`, `en`) VALUES ((?), (?))"
             cur.execute(sql_list1, (token, prepare_str(en)))
         cur.execute("SELECT `id` FROM `translate` WHERE `term`=(?) AND `user_id`=(?)", (token, self.user_id))
         if cur.fetchone(): raise DublicationDbData()
+        # add translate row
         sql_list2 = "INSERT INTO `translate` (`term`, `user_id`, `rus`) VALUES (?, ?, ?)"
         cur.execute(sql_list2, (token, self.user_id, prepare_str(ru)))
         translate_id = cur.lastrowid
+        # add progress row
         sql_list3 = "INSERT INTO `progress` (`translate_id`) VALUES (?)"
         cur.execute(sql_list3, (translate_id,))
         return translate_id
@@ -362,13 +383,12 @@ class Condt(BaseConDict):
             cur.execute(sql_list, (self.user_id,))
             for result in cur.fetchall():
                 writer_csv.writerow(result)
-        except Exception as e:
-            if DEBUG: print(e)
-            cur.close()
+        except Exception as er:
+            self.prer(er)
             print("Export error")
         else:
-            cur.close()
             print("Export finished successfully to file: {0}".format(export_name))
+        cur.close()
         return 'export'
 
     def command_edit(self, translate_id):
@@ -390,28 +410,25 @@ class Condt(BaseConDict):
             # new token
             need_del = False
             token = hashlib.md5(bytes(en, 'utf-8')).hexdigest()
-            if token != result[2]:
-                cur.execute("INSERT INTO `term` (`token`, `en`) VALUES ((?), (?))", (token, prepare_str(en)))
-                need_del = True
-            # translate
-            cur.execute("UPDATE `translate` SET `rus`=(?), `term`=(?) WHERE `term`=(?) AND `user_id`=(?)", (prepare_str(ru), token, result[2], self.user_id))
-            # delete recodrs in term if it needed
-            if need_del:
-                cur.execute("SELECT `id` FROM `translate` WHERE `term`=(?) LIMIT 1", (result[2],))
-                if not cur.fetchone(): cur.execute("DELETE FROM `term` WHERE `token`=(?)", (result[2],))
+            with self.connect:
+                if token != result[2]:
+                    cur.execute("INSERT INTO `term` (`token`, `en`) VALUES ((?), (?))", (token, prepare_str(en)))
+                    need_del = True
+                # translate
+                cur.execute("UPDATE `translate` SET `rus`=(?), `term`=(?) WHERE `term`=(?) AND `user_id`=(?)", (prepare_str(ru), token, result[2], self.user_id))
+                # delete recodrs in term if it needed
+                if need_del:
+                    cur.execute("SELECT `id` FROM `translate` WHERE `term`=(?) LIMIT 1", (result[2],))
+                    if not cur.fetchone(): cur.execute("DELETE FROM `term` WHERE `token`=(?)", (result[2],))
         except IncorrectDbData as e:
+            self.prer(er)
             print('Record not found for current user.')
-            self.connect.rollback()
-            cur.close()
         except (TypeError, ValueError, sqlite3.DatabaseError) as er:
-            if DEBUG: print(er)
+            self.prer(er)
             print("Error, use '.edit ID' (ID is numerical)")
-            self.connect.rollback()
-            cur.close()
         else:
-            self.connect.commit()
-            cur.close()
             print('Successfully update')
+        cur.close()
         return 'edit'
 
     def command_delete(self, id_or_pattern):
@@ -436,28 +453,25 @@ class Condt(BaseConDict):
             if correction not in ('Y', 'y'):
                 return 'delete'
             # delete for correction information
-            for rec in id_for_del:
-                # delete translate
-                cur.execute("DELETE FROM `translate` WHERE `id`=(?)", (rec[0],))
-                # delete progress
-                cur.execute("DELETE FROM `progress` WHERE `translate_id`=(?)", (rec[0],))
-                # del from term if it needed
-                cur.execute("SELECT `term` FROM `translate` WHERE `term`=(?) LIMIT 1", (rec[1],))
-                if not cur.fetchone():
-                    cur.execute("DELETE FROM `term` WHERE `token`=(?)", (rec[1],))
-        except IncorrectDbData as e:
+            with self.connect:
+                for rec in id_for_del:
+                    # delete translate
+                    cur.execute("DELETE FROM `translate` WHERE `id`=(?)", (rec[0],))
+                    # delete progress
+                    cur.execute("DELETE FROM `progress` WHERE `translate_id`=(?)", (rec[0],))
+                    # del from term if it needed
+                    cur.execute("SELECT `term` FROM `translate` WHERE `term`=(?) LIMIT 1", (rec[1],))
+                    if not cur.fetchone():
+                        cur.execute("DELETE FROM `term` WHERE `token`=(?)", (rec[1],))
+        except IncorrectDbData as er:
+            self.prer(er)
             print('Record not found for current user.')
-            self.connect.rollback()
-            cur.close()
         except (sqlite3.DatabaseError, TypeError) as er:
-            if DEBUG: print(er)
+            self.prer(er)
             print("Error, use '.delete [ID or pattern]' (ID is numerical)")
-            self.connect.rollback()
-            cur.close()
         else:
-            self.connect.commit()
-            cur.close()
             print('Successfully update')
+        cur.close()
         return 'delete'
 
     def command_connect(self, arg=None):
@@ -471,6 +485,7 @@ class Condt(BaseConDict):
         return 'connect'
 
     def check_user_translate(self, cur, for_search, by_pattern=False):
+        """search user pattern"""
         sql_str = "SELECT `term`.`en`, `translate`.`rus`, `term`.`token`, `translate`.`id` FROM `translate` LEFT JOIN `term` ON (`translate`.`term`=`term`.`token`) "
         if by_pattern:
             pattern = for_search + '%' 
@@ -487,42 +502,36 @@ class Condt(BaseConDict):
         cur = self.connect.cursor()
         try:
             read_csv = csv.reader(open(import_name, newline='', encoding='utf-8'), dialect='excel', delimiter=';', quoting=csv.QUOTE_ALL)
-            for row in read_csv:
-                if not start:
-                    start = True
-                    continue
-                if len(row) < 2: continue
-                en = row[0]
-                ru = row[1]
-                # check term
-                token = hashlib.md5(bytes(prepare_str(en), 'utf-8')).hexdigest()
-                # check translate
-                cur.execute("SELECT `term` FROM `translate` WHERE `user_id`=(?) AND `term`=(?)", (self.user_id, token))
-                if not cur.fetchone():
+            with self.connect:
+                for row in read_csv:
+                    if not start:
+                        start = True
+                        continue
+                    if len(row) < 2: continue
+                    en = row[0]
+                    ru = row[1]
                     # check term
-                    cur.execute("SELECT `token` FROM `term` WHERE `token`=(?)", (token,))
+                    token = hashlib.md5(bytes(prepare_str(en), 'utf-8')).hexdigest()
+                    # check translate
+                    cur.execute("SELECT `term` FROM `translate` WHERE `user_id`=(?) AND `term`=(?)", (self.user_id, token))
                     if not cur.fetchone():
-                        cur.execute("INSERT INTO `term` (`token`, `en`) VALUES ((?), (?))", (token, prepare_str(en)))
-                    cur.execute("INSERT INTO `translate` (term,user_id,rus) VALUES (?,?,?)", (token, self.user_id, prepare_str(ru)))
-                    translate_id = cur.lastrowid
-                    cur.execute("INSERT INTO `progress` (`translate_id`) VALUES (?)", (translate_id,))
-                    print("Added: {0}".format(en))
-                else:
-                    print("Dublicate record: {0}".format(en))
-                    continue
-        except sqlite3.DatabaseError as e:
-            if DEBUG: print(e)
-            self.connect.rollback()
-            cur.close()
+                        # check term
+                        cur.execute("SELECT `token` FROM `term` WHERE `token`=(?)", (token,))
+                        if not cur.fetchone():
+                            cur.execute("INSERT INTO `term` (`token`, `en`) VALUES ((?), (?))", (token, prepare_str(en)))
+                        cur.execute("INSERT INTO `translate` (term,user_id,rus) VALUES (?,?,?)", (token, self.user_id, prepare_str(ru)))
+                        translate_id = cur.lastrowid
+                        cur.execute("INSERT INTO `progress` (`translate_id`) VALUES (?)", (translate_id,))
+                        print("Added: {0}".format(en))
+                    else:
+                        print("Dublicate record: {0}".format(en))
+        except sqlite3.DatabaseError as er:
+            self.prer(er)
             print("DB error for {0}".format(en))
         except (TypeError, IOError) as er:
-            if DEBUG: print(er)
-            self.connect.rollback()
-            cur.close()
+            self.prer(er)
             print("Please write '.import import_file.csv'")
-        else:
-            self.connect.commit()
-            cur.close()
+        cur.close()
         return 'import'
 
     def command_testen(self, arg):
@@ -536,6 +545,7 @@ class Condt(BaseConDict):
         return 'test-mix'
 
     def command_test(self, arg=None, type_test=0):
+        """start user test"""
         cur = self.connect.cursor()
         created = datetime.datetime.now()
         name = ''
@@ -547,43 +557,42 @@ class Condt(BaseConDict):
         types_test = ('en-ru', 'ru-en', 'mix')
         print("Start test, type: '{0}', count: {1}".format(types_test[type_test], arg))
         try:
-            # insert `test`
-            cur.execute("INSERT INTO `test` (`user_id`, `name`, `created`) VALUES (?,?,?)", (self.user_id, types_test[type_test], created))
-            test_id = cur.lastrowid
-            alreadyq, to_save, progress = [], [], []
-            for i in range(1, arg+1):
-                # 0-en, 1-ru, 2-mix
-                question, answer, translate_id  = self.gen_question(cur, type_test, alreadyq)
-                if question is None:
-                    print("too few words")
-                    break
-                alreadyq.append(str(translate_id))
-                print('\nQuestion {0}: {1}'.format(i,question))
-                enter = input('translate: ')
-                # check error
-                er = False if check_ans(answer, enter) else True
-                result_row = {"test_id": test_id, "num": i, "question": question, 'answer': answer, 'enter': enter, 'error': er}
-                to_save.append(result_row)
-                progress_error = 1 if er else 0
-                progress.append({'translate_id': translate_id, 'error': progress_error})
-            # save results
-            cur.executemany("INSERT INTO `result` (`test_id`,`number`,`question`,`answer`,`enter`,`error`) VALUES (:test_id, :num, :question, :answer, :enter, :error)", to_save)
-            # update test
-            cur.execute("UPDATE `test` SET `finished`=(?) WHERE `id`=(?)", (datetime.datetime.now(), test_id))
-            # update progress
-            cur.executemany("UPDATE `progress` SET `all`=`all`+1, `error`=`error`+:error WHERE `translate_id`=:translate_id", progress)
-        except sqlite3.DatabaseError as e:
+            with self.connect:
+                # insert `test`
+                cur.execute("INSERT INTO `test` (`user_id`, `name`, `created`) VALUES (?,?,?)", (self.user_id, types_test[type_test], created))
+                test_id = cur.lastrowid
+                alreadyq, to_save, progress = [], [], []
+                for i in range(1, arg+1):
+                    # 0-en, 1-ru, 2-mix
+                    question, answer, translate_id  = self.gen_question(cur, type_test, alreadyq)
+                    if question is None:
+                        print("too few words")
+                        break
+                    alreadyq.append(str(translate_id))
+                    print('\nQuestion {0}: {1}'.format(i,question))
+                    enter = input('translate: ')
+                    # check error
+                    er = False if check_ans(answer, enter) else True
+                    result_row = {"test_id": test_id, "num": i, "question": question, 'answer': answer, 'enter': enter, 'error': er}
+                    to_save.append(result_row)
+                    progress_error = 1 if er else 0
+                    progress.append({'translate_id': translate_id, 'error': progress_error})
+                # save results
+                cur.executemany("INSERT INTO `result` (`test_id`,`number`,`question`,`answer`,`enter`,`error`) VALUES (:test_id, :num, :question, :answer, :enter, :error)", to_save)
+                # update test
+                cur.execute("UPDATE `test` SET `finished`=(?) WHERE `id`=(?)", (datetime.datetime.now(), test_id))
+                # update progress
+                cur.executemany("UPDATE `progress` SET `all`=`all`+1, `error`=`error`+:error WHERE `translate_id`=:translate_id", progress)
+        except sqlite3.DatabaseError as er:
+            self.prer(er)
             print("Error")
-            if DEBUG: print(e)
-            self.connect.rollback()
-            cur.close()
         else:
-            self.connect.commit()
-            cur.close()
             print("Test successfully finished")
-        self.print_test_result(to_save)
+            self.print_test_result(to_save)
+        cur.close()
 
     def print_test_result(self, tests):
+        """print test info"""
         right, error = 0, 0
         print("*******YOUR ERRORS********")
         for q in tests:
@@ -613,4 +622,10 @@ class Condt(BaseConDict):
             j = 1 if i == 2 else 2
             question, answer = row[i], row[j]
         return question, answer, translate_id
+
+    def command_tets(self, arg=None):
+        pass
+
+    def command_testinfo(self, test_id=None):
+        pass
 

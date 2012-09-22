@@ -9,8 +9,8 @@ TEST_CONNECT = "http://ya.ru/"
 CHECK_MANY_SPACE = re.compile(r"\s+")
 DEFCTEST = 10
 
-
 def get_config_data(filename):
+    global DEFCTEST
     result = {'database': None, 'defuser': None, 'defctest': DEFCTEST}
     config = configparser.ConfigParser()
     try:
@@ -58,6 +58,7 @@ def get_translate(for_translate, trans_type):
 
 def get_test_connection():
     global TEST_CONNECT
+    print("check connection...")
     try:
         conn = request.urlopen(TEST_CONNECT)
         result = True if conn.getcode() == 200 else False
@@ -68,6 +69,7 @@ def get_test_connection():
     return result
 
 def check_ans(answer, enter):
+    global CHECK_MANY_SPACE
     a1 = CHECK_MANY_SPACE.sub(" ", answer.lower().strip())
     a2 = CHECK_MANY_SPACE.sub(" ", enter.lower().strip())
     return (a1 == a2)
