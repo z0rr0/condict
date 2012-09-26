@@ -2,9 +2,9 @@
 #-*- coding: utf-8 -*-
 
 import re, configparser, json, signal
-from urllib import request
+from urllib import request, parse
 
-YANDEX_TRANSLATE_JSON = "http://translate.yandex.net/api/v1/tr.json/translate?lang="
+YANDEX_TRANSLATE_JSON = "http://translate.yandex.net/api/v1/tr.json/translate?"
 TEST_CONNECT = "http://ya.ru/"
 CHECK_MANY_SPACE = re.compile(r"\s+")
 DEFCTEST = 10
@@ -40,9 +40,10 @@ def get_translate(for_translate, trans_type):
     result = False
     prepate_url = request.pathname2url(for_translate)
     trans_types = {'en': 'en-ru', 'ru': 'ru-en'}
-    prepate_url = YANDEX_TRANSLATE_JSON + trans_types[trans_type] + "&text=" + prepate_url
+    params = {'lang': trans_types[trans_type], 'text': for_translate}
+    prepate_url = parse.urlencode(params, encoding="utf-8")
     try:
-        conn = request.urlopen(prepate_url)
+        conn = request.urlopen(YANDEX_TRANSLATE_JSON + prepate_url)
     except Exception as e:
         print("Not connection\nError:")
         print(e)
