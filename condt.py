@@ -65,6 +65,10 @@ class Condt(BaseConDict):
             'full': 'start ru-en test'},
         '.testmix': {'desc': 'start en-ru test', 'command': None,
             'full': 'start mix test'},
+        '.testinfo': {'desc': 'information by test', 'command': None,
+            'full': 'full test information by test ID'},
+        '.testlist': {'desc': 'list of tests', 'command': None,
+            'full': 'this command print list of your tests'},
         }
     def __init__(self, name, dbfile, ctest=10):
         super().__init__(name, dbfile)       
@@ -605,6 +609,7 @@ class Condt(BaseConDict):
         print("\nResult: {0} error(s) from {1}".format(error,(right + error)))
 
     def gen_question(self, cur, type_test, alreadyq):
+        """genaration question for any test"""
         sql_list = "SELECT `translate`.`id`, `term`.`en`, `translate`.`rus` FROM `translate` LEFT JOIN `term` ON (`translate`.`term`=`term`.`token`) WHERE `translate`.`user_id`=" + str(self.user_id) + " AND (`translate`.`id` NOT IN (" + ", ".join(alreadyq) + "))"
         cur.execute(sql_list)
         for_search = cur.fetchall()
@@ -623,7 +628,7 @@ class Condt(BaseConDict):
             question, answer = row[i], row[j]
         return question, answer, translate_id
 
-    def command_tets(self, arg=None):
+    def command_tetlist(self, arg=None):
         pass
 
     def command_testinfo(self, test_id=None):
