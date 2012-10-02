@@ -8,3 +8,7 @@ Uses:
 	http://api.yandex.ru/translate/doc/dg/reference/translate.xml
 - Fossil 
 	http://www.fossil-scm.org/
+
+Test user:
+    login: test
+    password: 123

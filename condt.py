@@ -7,6 +7,7 @@ from aside import *
 # please, change this stirg for your application
 SALT = 'r8Uts$jLs74Lgh49_h75&w@dFsS4sgpm3Kqq['
 EXPORT_NAME = 'condict_export_'
+TEST_NUM = 5
 DEBUG = True
 
 class IncorrectDbData(Exception): pass
@@ -109,6 +110,8 @@ class Condt(BaseConDict):
         self.COMMANDS['.test']['command'] = self.command_testen
         self.COMMANDS['.testru']['command'] = self.command_testru
         self.COMMANDS['.testmix']['command'] = self.command_testmix
+        self.COMMANDS['.testlist']['command'] = self.command_testlist
+        self.COMMANDS['.testinfo']['command'] = self.command_testinfo
 
     def hash_pass(self, password):
         """create password hash: text => hast string"""
@@ -628,9 +631,38 @@ class Condt(BaseConDict):
             question, answer = row[i], row[j]
         return question, answer, translate_id
 
-    def command_tetlist(self, arg=None):
-        pass
+    def command_testlist(self, arg=None):
+        """print user tests"""
+        global TEST_NUM
+        cur = self.connect.cursor()
+        try:
+            arg = int(arg) if arg else TEST_NUM
+            sql_list = "SELECT `test`.`id`, `test`.`name`, `test`.`created`, `test`.`finished` FROM `test` WHERE `test`.`user_id`=(?) ORDER BY `test`.`created` DESC, `test`.`finished` DESC"
+            cur.execute(sql_list, (self.user_id,))
+            i = 1
+            print("Your tests:")
+            for row in cur.fetchall():
+                created = datetime.datetime.strptime(row[2], "%Y-%m-%d %H:%M:%S.%f")
+                finished = datetime.datetime.strptime(row[3], "%Y-%m-%d %H:%M:%S.%f")
+                cur.execute("SELECT COUNT(*) FROM `result` WHERE `result`.`test_id`=(?) AND `result`.`error`=1", (row[0],))
+                results = cur.fetchone()
+                error = results[0] if results else 0
+                cur.execute("SELECT COUNT(*) FROM `result` WHERE `result`.`test_id`=(?)", (row[0],))
+                results = cur.fetchone()
+                allres = results[0] if results else 0
+                print("{0}. ID={1}, type: {2}, {5} error(s) from {6}\n   created: {3}, finished: {4}\n".format(i, row[0], row[1], created.strftime("%d.%m.%Y %H:%M:%S"), finished.strftime("%d.%m.%Y %H:%M:%S"), error, allres))
+                i +=1
+        except (ValueError, TypeError) as er:
+            self.prer(er)
+            print("Error.")
+        except sqlite3.DatabaseError as er:
+            self.prer(er)
+            print("Error")
+        cur.close()
+        return 'tetslist'
+
 
     def command_testinfo(self, test_id=None):
         pass
+        return 'testinfo'
 
