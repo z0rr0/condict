@@ -602,7 +602,7 @@ class Condt(BaseConDict):
         for q in tests:
             if q['error']:
                 error += 1
-                print("\nQ#{0}: {1}\n[correcnt] {2}\n[you] {3}".format(q['num'],q['question'],q['answer'],q['enter']))
+                print("\nQ#{0}: {1}\n[correct] {2}\n[you] {3}".format(q['num'],q['question'],q['answer'],q['enter']))
             else:
                 right += 1
         print("**************************")
