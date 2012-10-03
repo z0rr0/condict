@@ -388,13 +388,14 @@ class Condt(BaseConDict):
             writer_csv.writerow(['ENGLISH','RUSSIAN'])
             sql_list = "SELECT `term`.`en`, `translate`.`rus` FROM `translate` LEFT JOIN `term` ON (`translate`.`term`=`term`.`token`) WHERE `translate`.`user_id`=(?) ORDER BY `term`.`en`, `translate`.`rus`"
             cur.execute(sql_list, (self.user_id,))
-            for result in cur.fetchall():
+            results = cur.fetchall()
+            for result in results:
                 writer_csv.writerow(result)
         except Exception as er:
             self.prer(er)
             print("Export error")
         else:
-            print("Export finished successfully to file: {0}".format(export_name))
+            print("Export finished, successfully export {0} record(s) to file: {1}".format(len(results), export_name))
         cur.close()
         return 'export'
 
@@ -507,6 +508,7 @@ class Condt(BaseConDict):
         """import user dict to CSV"""
         start = False
         cur = self.connect.cursor()
+        uniqCount, dublCount = 0, 0
         try:
             read_csv = csv.reader(open(import_name, newline='', encoding='utf-8'), dialect='excel', delimiter=';', quoting=csv.QUOTE_ALL)
             with self.connect:
@@ -530,14 +532,18 @@ class Condt(BaseConDict):
                         translate_id = cur.lastrowid
                         cur.execute("INSERT INTO `progress` (`translate_id`) VALUES (?)", (translate_id,))
                         print("Added: {0}".format(en))
+                        uniqCount += 1
                     else:
                         print("Dublicate record: {0}".format(en))
+                        dublCount += 1
         except sqlite3.DatabaseError as er:
             self.prer(er)
             print("DB error for {0}".format(en))
         except (TypeError, IOError) as er:
             self.prer(er)
             print("Please write '.import import_file.csv'")
+        else:
+            print("Successfully import {0} new record(s), with {1} duplicates.".format(uniqCount, dublCount))
         cur.close()
         return 'import'
 
