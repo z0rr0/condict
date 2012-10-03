@@ -637,8 +637,8 @@ class Condt(BaseConDict):
         cur = self.connect.cursor()
         try:
             arg = int(arg) if arg else TEST_NUM
-            sql_list = "SELECT `test`.`id`, `test`.`name`, `test`.`created`, `test`.`finished` FROM `test` WHERE `test`.`user_id`=(?) ORDER BY `test`.`created` DESC, `test`.`finished` DESC"
-            cur.execute(sql_list, (self.user_id,))
+            sql_list = "SELECT `test`.`id`, `test`.`name`, `test`.`created`, `test`.`finished` FROM `test` WHERE `test`.`user_id`=(?) ORDER BY `test`.`created` DESC, `test`.`finished` DESC LIMIT (?);"
+            cur.execute(sql_list, (self.user_id, arg))
             i = 1
             print("Your tests:")
             for row in cur.fetchall():
@@ -654,7 +654,7 @@ class Condt(BaseConDict):
                 i +=1
         except (ValueError, TypeError) as er:
             self.prer(er)
-            print("Error.")
+            print("Error, use <.testlist N> (N - number)")
         except sqlite3.DatabaseError as er:
             self.prer(er)
             print("Error")
