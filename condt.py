@@ -606,18 +606,20 @@ class Condt(BaseConDict):
             self.print_test_result(to_save)
         cur.close()
 
-    def print_test_result(self, tests):
+    def print_test_result(self, tests, print_right=False):
         """print test info"""
         right, error = 0, 0
-        print("*******YOUR ERRORS********")
+        print("*******YOUR RESULT********")
         for q in tests:
             if q['error']:
                 error += 1
-                print("\nQ#{0}: {1}\n[correct] {2}\n[you] {3}".format(q['num'],q['question'],q['answer'],q['enter']))
+                print("Q#{0} (Error): {1}\n[correct] {2}\n[you] {3}\n".format(q['num'],q['question'],q['answer'],q['enter']))
             else:
                 right += 1
+                if print_right:
+                    print("Q#{0}: {1}\n[correct] {2}\n[you] {3}\n".format(q['num'],q['question'],q['answer'],q['enter']))
         print("**************************")
-        print("\nResult: {0} error(s) from {1}".format(error,(right + error)))
+        print("Result: {0} error(s) from {1}".format(error,(right + error)))
 
     def gen_question(self, cur, type_test, alreadyq):
         """genaration question for any test"""
@@ -670,7 +672,32 @@ class Condt(BaseConDict):
         return 'tetslist'
 
 
-    def command_testinfo(self, test_id=None):
-        pass
+    def command_testinfo(self, arg=None):
+        cur = self.connect.cursor()
+        try:
+            test_id = int(arg)
+            # test info
+            sql_list = "SELECT `test`.`id`, `test`.`name`, `test`.`created`, `test`.`finished` FROM `test` WHERE `test`.`user_id`=(?) AND `test`.`id`=(?);"
+            cur.execute(sql_list, (self.user_id, test_id))
+            test = cur.fetchone()
+            if not test:
+                print("Empty test")
+                return "test_info"
+            created = datetime.datetime.strptime(test[2], "%Y-%m-%d %H:%M:%S.%f")
+            finished = datetime.datetime.strptime(test[3], "%Y-%m-%d %H:%M:%S.%f")
+            print("ID={0}, type: {1}, created: {2}, finished: {3}\n".format(test[0], test[1], created.strftime("%d.%m.%Y %H:%M:%S"), finished.strftime("%d.%m.%Y %H:%M:%S")))
+            # results
+            cur.execute("SELECT `result`.`number`, `result`.`question`, `result`.`answer`, `result`.`enter`, `result`.`error` FROM `result` WHERE `result`.`test_id`=(?) ORDER BY `result`.`number`;", (test_id,))
+            for_print = []
+            for row in cur.fetchall():
+                for_print.append({'num': row[0], 'question': row[1], 'answer': row[2], 'enter': row[3], 'error': row[4]})
+            self.print_test_result(for_print, True)
+        except (ValueError, TypeError) as er:
+            self.prer(er)
+            print("Error, use <.tesinfo ID> (ID - number)")
+        except sqlite3.DatabaseError as er:
+            self.prer(er)
+            print("Error")
+        cur.close()
         return 'testinfo'
 
