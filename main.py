@@ -22,7 +22,7 @@ def main():
     # get name
     user = config['defuser'] if config['defuser'] else input("User name:")
     # create object
-    account = Condt(user, config['database'], config['defctest'])
+    account = Condt(user, config['database'], config['debug'], config['defctest'])
     if not account:
         print('Validation error, by...')
         return 0

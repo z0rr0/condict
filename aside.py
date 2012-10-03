@@ -11,13 +11,19 @@ DEFCTEST = 10
 
 def get_config_data(filename):
     global DEFCTEST
-    result = {'database': None, 'defuser': None, 'defctest': DEFCTEST}
+    result = {'database': None, 'defuser': None, 'defctest': DEFCTEST, 'debug': False}
     config = configparser.ConfigParser()
     try:
         config.read(filename)
-        result['database'] = config['database']['dbname']
-        result['defuser'] = config['user']['default_user']
-        result['defctest'] = int(config['user']['test_count'])
+        for sec in config.sections():
+            if 'dbname' in config[sec]:
+                result['database'] = config[sec]['dbname']
+            if 'default_user' in config[sec]:
+                result['defuser'] = config[sec]['default_user']
+            if 'test_count' in config[sec]:
+                result['defctest'] = int(config[sec]['test_count'])
+            if 'debug' in config[sec]:
+                result['debug'] = config[sec].getboolean('debug')
     except (ValueError, KeyError, IndexError, TypeError) as er:
         pass
     return result

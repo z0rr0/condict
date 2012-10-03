@@ -8,14 +8,16 @@ from aside import *
 SALT = 'r8Uts$jLs74Lgh49_h75&w@dFsS4sgpm3Kqq['
 EXPORT_NAME = 'condict_export_'
 TEST_NUM = 5
-DEBUG = True
+DEBUG = False
 
 class IncorrectDbData(Exception): pass
 class DublicationDbData(Exception): pass
 
 class BaseConDict(object):
     """Base Console Dictionary class"""
-    def __init__(self, name, dbfile):
+    def __init__(self, name, dbfile, debug):
+        global DEBUG
+        DEBUG = debug
         self.connect = sqlite3.connect(dbfile)
         self.online = False
         self.name = name
@@ -71,8 +73,8 @@ class Condt(BaseConDict):
         '.testlist': {'desc': 'list of tests', 'command': None,
             'full': 'this command print list of your tests'},
         }
-    def __init__(self, name, dbfile, ctest=10):
-        super().__init__(name, dbfile)       
+    def __init__(self, name, dbfile, debug, ctest=10):
+        super().__init__(name, dbfile, debug)       
         self.__pcounter = 3
         self.ctest = ctest
         self.init_command()
