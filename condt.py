@@ -277,6 +277,12 @@ class Condt(BaseConDict):
         return 'ru'
     def command_enru(self, text, tr_type):
         """translate, only with online"""
+        global DEBUG
+        # found in offline DB
+        alreadyEx = self.alreadyex(text, tr_type)
+        if alreadyEx: 
+            if DEBUG: print("[offline]")
+            return alreadyEx[0]
         if not self.online:
             return "Offline, please test connect with '.connect' command"
         result = get_translate(text, tr_type)
@@ -324,6 +330,9 @@ class Condt(BaseConDict):
                         raise IncorrectDbData()
                     else:
                         en = en_words
+                # check en translate
+                if self.alreadyex(en): raise DublicationDbData
+                # get translate
                 try:
                     ru_words = self.command_enru(en, 'en')[0]
                 except Exception as e:
@@ -355,6 +364,20 @@ class Condt(BaseConDict):
         cur.close()
         return 'add'
 
+    def alreadyex(self, enru, typetr='en'):
+        """check en words in DB"""
+        cur = self.connect.cursor()
+        if typetr == 'en':
+            addstr = "SELECT `rus` FROM `translate` WHERE `term`=(?) AND `user_id`=(?)"
+            params = (hashlib.md5(bytes(enru, 'utf-8')).hexdigest(), self.user_id)
+        else:
+            addstr = "SELECT `term`.`en` FROM `translate` LEFT JOIN `term` ON (`translate`.`term`=`term`.`token`) WHERE `translate`.`rus` LIKE (?) AND `translate`.`user_id`=(?) LIMIT 1;"
+            params = (prepare_str(enru), self.user_id)
+        cur.execute(addstr, params)
+        result = cur.fetchone()
+        cur.close()
+        return result
+
     def command_add_kinds(self, cur, en, ru):
         """SQL queries for add-command"""
         token = hashlib.md5(bytes(en, 'utf-8')).hexdigest()
@@ -365,8 +388,9 @@ class Condt(BaseConDict):
             # insert in to tables
             sql_list1 = "INSERT INTO `term` (`token`, `en`) VALUES ((?), (?))"
             cur.execute(sql_list1, (token, prepare_str(en)))
-        cur.execute("SELECT `id` FROM `translate` WHERE `term`=(?) AND `user_id`=(?)", (token, self.user_id))
-        if cur.fetchone(): raise DublicationDbData()
+        # done in self.alreadyex
+        # cur.execute("SELECT `id` FROM `translate` WHERE `term`=(?) AND `user_id`=(?)", (token, self.user_id))
+        # if cur.fetchone(): raise DublicationDbData()
         # add translate row
         sql_list2 = "INSERT INTO `translate` (`term`, `user_id`, `rus`) VALUES (?, ?, ?)"
         cur.execute(sql_list2, (token, self.user_id, prepare_str(ru)))
@@ -602,11 +626,11 @@ class Condt(BaseConDict):
             self.prer(er)
             print("Error")
         else:
-            print("Test successfully finished")
-            self.print_test_result(to_save)
+            print("Test successfully finished, ID={}.".format(test_id))
+            self.print_test_result(to_save, test_id, False)
         cur.close()
 
-    def print_test_result(self, tests, print_right=False):
+    def print_test_result(self, tests, test_id, print_right=False):
         """print test info"""
         right, error = 0, 0
         print("*******YOUR RESULT********")
@@ -619,7 +643,7 @@ class Condt(BaseConDict):
                 if print_right:
                     print("Q#{0}: {1}\n[correct] {2}\n[you] {3}\n".format(q['num'],q['question'],q['answer'],q['enter']))
         print("**************************")
-        print("Result: {0} error(s) from {1}".format(error,(right + error)))
+        print("Test ID={2}. Result: {0} error(s) from {1}".format(error,(right + error), test_id))
 
     def gen_question(self, cur, type_test, alreadyq):
         """genaration question for any test"""
@@ -671,7 +695,6 @@ class Condt(BaseConDict):
         cur.close()
         return 'tetslist'
 
-
     def command_testinfo(self, arg=None):
         cur = self.connect.cursor()
         try:
@@ -691,7 +714,7 @@ class Condt(BaseConDict):
             for_print = []
             for row in cur.fetchall():
                 for_print.append({'num': row[0], 'question': row[1], 'answer': row[2], 'enter': row[3], 'error': row[4]})
-            self.print_test_result(for_print, True)
+            self.print_test_result(for_print, test_id, True)
         except (ValueError, TypeError) as er:
             self.prer(er)
             print("Error, use <.tesinfo ID> (ID - number)")
