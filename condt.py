@@ -318,18 +318,22 @@ class Condt(BaseConDict):
         cur.close()
         return 'list'
     
+    def check_default(self, defaultVar, addStr=''):
+        result = input(addStr + ' [' + defaultVar + ']:') if defaultVar else input(addStr +': ')
+        if not result:
+            if not defaultVar:
+                raise IncorrectDbData()
+            else:
+                result = defaultVar
+        return prepare_str(result)
+
     def command_add(self, en_words=None):
         """add new user pattern"""
         cur = self.connect.cursor()
         print('Please enter your patterns:')
         while True:
             try:
-                en = input('En [' + en_words + ']:') if en_words else input('En: ')
-                if not en:
-                    if not en_words:
-                        raise IncorrectDbData()
-                    else:
-                        en = en_words
+                en = self.check_default(en_words, 'En')
                 # check en translate
                 if self.alreadyex(en): raise DublicationDbData
                 # get translate
@@ -338,14 +342,7 @@ class Condt(BaseConDict):
                 except Exception as e:
                     if DEBUG: print(e)
                     ru_words = None
-                ru = input('Ru [' + ru_words + ']:') if ru_words else input('Ru: ')
-                if not ru:
-                    if not ru_words:
-                        raise IncorrectDbData()
-                    else:
-                        ru = ru_words
-                ru = ru.lower().strip()
-                en = en.lower().strip()
+                ru = self.check_default(ru_words, 'Ru')
                 with self.connect:
                     translate_id = self.command_add_kinds(cur, en, ru)
             except DublicationDbData:
