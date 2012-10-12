@@ -194,8 +194,12 @@ class Condt(BaseConDict):
         """parser for user command"""
         command, arg = get_command(command)
         if command not in self.COMMANDS.keys():
-            return None
-        result = self.COMMANDS[command]['command'](arg)
+            # call en-ru translate
+            if command == '' or command[0] == '.': return None
+            arg = command + ' ' + arg if arg else command
+            result = self.COMMANDS['.en']['command'](arg)
+        else:
+            result = self.COMMANDS[command]['command'](arg)
         return result
 
     def command_help(self, arg=None):
