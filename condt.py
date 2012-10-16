@@ -72,6 +72,8 @@ class Condt(BaseConDict):
             'full': 'full test information by test ID'},
         '.testlist': {'desc': 'list of tests', 'command': None,
             'full': 'this command print list of your tests'},
+        '.info': {'desc': 'information about dictionary', 'command': None,
+            'full': 'print information: user info, dictionary info, test info'},
         }
     def __init__(self, name, dbfile, debug, ctest=10):
         super().__init__(name, dbfile, debug)       
@@ -114,6 +116,7 @@ class Condt(BaseConDict):
         self.COMMANDS['.testmix']['command'] = self.command_testmix
         self.COMMANDS['.testlist']['command'] = self.command_testlist
         self.COMMANDS['.testinfo']['command'] = self.command_testinfo
+        self.COMMANDS['.info']['command'] = self.command_info
 
     def hash_pass(self, password):
         """create password hash: text => hast string"""
@@ -724,4 +727,22 @@ class Condt(BaseConDict):
             print("Error")
         cur.close()
         return 'testinfo'
+
+    def command_info(self, arg=None):
+        cur = self.connect.cursor()
+        # user
+        cur.execute("SELECT `name`, `full` FROM `user` WHERE `id`=(?)", (self.user_id,))
+        result = cur.fetchone()
+        print("{0}: {1}".format(*result))
+        cur.execute("SELECT COUNT(*) FROM `translate` WHERE `user_id`=(?) GROUP BY `user_id`", (self.user_id,))
+        result = cur.fetchone()
+        print("There are {0} records in user dictionary".format(result[0]))
+        cur.execute("SELECT COUNT(*) FROM `test` WHERE `user_id`=(?) GROUP BY `user_id`", (self.user_id,))
+        result = cur.fetchone()
+        cur.execute("SELECT COUNT(*) FROM `result` LEFT JOIN `test` WHERE `test`.`user_id`=(?) GROUP BY `user_id`", (self.user_id,))
+        results = cur.fetchone()
+        print("There are {0} tests, with {1} results".format(result[0], results[0]))
+        cur.close()
+        return 'info'
+
 
