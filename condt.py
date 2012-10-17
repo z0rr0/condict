@@ -739,7 +739,7 @@ class Condt(BaseConDict):
         print("There are {0} records in user dictionary".format(result[0]))
         cur.execute("SELECT COUNT(*) FROM `test` WHERE `user_id`=(?) GROUP BY `user_id`", (self.user_id,))
         result = cur.fetchone()
-        cur.execute("SELECT COUNT(*) FROM `result` LEFT JOIN `test` WHERE `test`.`user_id`=(?) GROUP BY `user_id`", (self.user_id,))
+        cur.execute("SELECT COUNT(`result`.`id`) FROM `result` LEFT JOIN `test` ON (`result`.`test_id`=`test`.`id`) WHERE `test`.`user_id`=(?) GROUP BY `test`.`user_id`", (self.user_id,))
         results = cur.fetchone()
         print("There are {0} tests, with {1} results".format(result[0], results[0]))
         cur.close()
