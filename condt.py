@@ -292,6 +292,7 @@ class Condt(BaseConDict):
             return alreadyEx[0]
         if not self.online:
             return "Offline, please test connect with '.connect' command"
+        check_spell(text, tr_type)
         result = get_translate(text, tr_type)
         if not result or result['code'] != 200:
             self.command_connect()
