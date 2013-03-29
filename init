@@ -1,0 +1,14 @@
+                Bytes      Cards  Artifacts     Deltas
+Sent:              53          1          0          0
+Received:       11577         71         19         15
+Sent:              58          2          0          0
+Received:         920          5          0          0
+Total network traffic: 591 bytes sent, 12551 bytes received
+Rebuilding repository meta-data...
+  100.0% complete...
+project-id: f43092e0fae7c82dd14825033b605d83530d947f
+server-id:  6cfdfdadc23140aa0b44115ceee21a0617314fae
+admin-user: zorro (password is "eb3d66")
+
+
+echo '.schema' | sqlite3 db.sqlite > db.sql
